@@ -19,7 +19,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    username = db.Column(db.String(80), nullable=False)
     password = db.Column(db.String(120), nullable=False)
 
 class UserRegistration(Resource):
@@ -34,7 +34,7 @@ class UserRegistration(Resource):
                 raise BadRequest("Email, username, and password are required.")
 
             if User.query.filter_by(email=email).first():
-                return {"message": "User with this email already exists"}, 400
+                return {"message": "User already exists"}, 400
 
             hashed_password = generate_password_hash(password)
             new_user = User(email=email, username=username, password=hashed_password)
@@ -45,7 +45,7 @@ class UserRegistration(Resource):
 
         except IntegrityError:
             db.session.rollback()
-            return {"message": "User with this email already exists"}, 400
+            return {"message": "User already exists"}, 400
         except BadRequest as e:
             return {"message": str(e)}, 400
         except Exception as e:
