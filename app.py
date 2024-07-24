@@ -22,7 +22,7 @@ class User(db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
-    date_created = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
     history = db.relationship('UserHistory', backref='user', lazy=True)
 
@@ -110,9 +110,16 @@ class RecordUserHistory(Resource):
         except Exception as e:
             return {"message": "Something went wrong"}, 500
 
+class ProtectedResource(Resource):
+    @jwt_required()
+    def get(self):
+        current_user_email = get_jwt_identity()
+        return {"message": f"Hello, {current_user_email}"}, 200
+
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
+api.add_resource(ProtectedResource, '/protected')
 
 if __name__ == '__main__':
     with app.app_context():
