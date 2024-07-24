@@ -110,16 +110,25 @@ class RecordUserHistory(Resource):
         except Exception as e:
             return {"message": "Something went wrong"}, 500
 
-class ProtectedResource(Resource):
     @jwt_required()
     def get(self):
-        current_user_email = get_jwt_identity()
-        return {"message": f"Hello, {current_user_email}"}, 200
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                return {"message": "User not found"}, 404
+            
+            history_items = UserHistory.query.filter_by(user_id=user.id).all()
+            history_data = [{"action": item.action, "timestamp": item.timestamp} for item in history_items]
+
+            return jsonify(history_data), 200
+
+        except Exception as e:
+            return {"message": "Something went wrong"}, 500
 
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
-api.add_resource(ProtectedResource, '/protected')
 
 if __name__ == '__main__':
     with app.app_context():
