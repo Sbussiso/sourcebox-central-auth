@@ -8,8 +8,8 @@ from werkzeug.exceptions import BadRequest
 import os
 
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'  # Change this!
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your_jwt_secret_key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 api = Api(app)
@@ -18,6 +18,7 @@ db = SQLAlchemy(app)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
 
@@ -25,17 +26,18 @@ class UserRegistration(Resource):
     def post(self):
         try:
             data = request.get_json()
+            email = data.get('email')
             username = data.get('username')
             password = data.get('password')
 
-            if not username or not password:
-                raise BadRequest("Username and password are required.")
+            if not email or not username or not password:
+                raise BadRequest("Email, username, and password are required.")
 
-            if User.query.filter_by(username=username).first():
-                return {"message": "User already exists"}, 400
+            if User.query.filter_by(email=email).first():
+                return {"message": "User with this email already exists"}, 400
 
             hashed_password = generate_password_hash(password)
-            new_user = User(username=username, password=hashed_password)
+            new_user = User(email=email, username=username, password=hashed_password)
             db.session.add(new_user)
             db.session.commit()
 
@@ -43,7 +45,7 @@ class UserRegistration(Resource):
 
         except IntegrityError:
             db.session.rollback()
-            return {"message": "User already exists"}, 400
+            return {"message": "User with this email already exists"}, 400
         except BadRequest as e:
             return {"message": str(e)}, 400
         except Exception as e:
@@ -53,18 +55,18 @@ class UserLogin(Resource):
     def post(self):
         try:
             data = request.get_json()
-            username = data.get('username')
+            email = data.get('email')
             password = data.get('password')
 
-            if not username or not password:
-                raise BadRequest("Username and password are required.")
+            if not email or not password:
+                raise BadRequest("Email and password are required.")
 
-            user = User.query.filter_by(username=username).first()
+            user = User.query.filter_by(email=email).first()
 
             if not user or not check_password_hash(user.password, password):
                 return {"message": "Invalid credentials"}, 401
 
-            access_token = create_access_token(identity=username)
+            access_token = create_access_token(identity=email)
             return {"access_token": access_token}, 200
 
         except BadRequest as e:
