@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your_jwt_secret_key')
@@ -18,9 +19,18 @@ db = SQLAlchemy(app)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    username = db.Column(db.String(80), nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    date_created = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    premium_status = db.Column(db.Boolean, default=False)
+    history = db.relationship('UserHistory', backref='user', lazy=True)
+
+class UserHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(150))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
 
 class UserRegistration(Resource):
     def post(self):
@@ -74,18 +84,35 @@ class UserLogin(Resource):
         except Exception as e:
             return {"message": "Something went wrong"}, 500
 
-class ProtectedResource(Resource):
+class RecordUserHistory(Resource):
     @jwt_required()
-    def get(self):
+    def post(self):
         try:
-            current_user = get_jwt_identity()
-            return {"message": f"Hello {current_user}"}, 200
+            current_user_email = get_jwt_identity()
+            data = request.get_json()
+            action = data.get('action')
+            
+            if not action:
+                raise BadRequest("Action is required.")
+            
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                return {"message": "User not found"}, 404
+
+            new_history = UserHistory(user_id=user.id, action=action)
+            db.session.add(new_history)
+            db.session.commit()
+
+            return {"message": "User history recorded successfully"}, 201
+
+        except BadRequest as e:
+            return {"message": str(e)}, 400
         except Exception as e:
             return {"message": "Something went wrong"}, 500
 
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
-api.add_resource(ProtectedResource, '/protected')
+api.add_resource(RecordUserHistory, '/user_history')
 
 if __name__ == '__main__':
     with app.app_context():
