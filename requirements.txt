@@ -13,7 +13,7 @@ Jinja2==3.1.4
 MarkupSafe==2.1.5
 PyJWT==2.8.0
 pytz==2024.1
-setuptools==69.0.3
+setuptools==70.0.0
 six==1.16.0
 smmap==5.0.1
 SQLAlchemy==2.0.31
