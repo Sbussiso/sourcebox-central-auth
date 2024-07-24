@@ -120,9 +120,9 @@ class RecordUserHistory(Resource):
                 return {"message": "User not found"}, 404
             
             history_items = UserHistory.query.filter_by(user_id=user.id).all()
-            history_data = [{"action": item.action, "timestamp": item.timestamp} for item in history_items]
+            history_data = [{"action": item.action, "timestamp": item.timestamp.isoformat()} for item in history_items]
 
-            return jsonify(history_data), 200
+            return jsonify(history_data)
 
         except Exception as e:
             return {"message": "Something went wrong"}, 500
