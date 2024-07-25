@@ -41,7 +41,7 @@ class PlatformUpdates(db.Model):
 
 class Packman(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Add foreign key
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     web_data = db.relationship('PackmanWebData', backref='packman', lazy=True)
     files = db.relationship('PackmanUserFile', backref='packman', lazy=True)
 
