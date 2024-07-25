@@ -299,6 +299,7 @@ api.add_resource(DeleteUser, '/users/<int:user_id>')
 api.add_resource(ResetUserEmail, '/users/<int:user_id>/email')
 api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
+#
 
 if __name__ == '__main__':
     with app.app_context():
