@@ -56,8 +56,6 @@ class PackmanUserFile(db.Model):
     filepath = db.Column(db.String(255), nullable=False)
     packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
 
-
-
 class UserRegistration(Resource):
     def post(self):
         try:
@@ -85,6 +83,7 @@ class UserRegistration(Resource):
         except BadRequest as e:
             return {"message": str(e)}, 400
         except Exception as e:
+            app.logger.error(f"Error during user registration: {e}")
             return {"message": "Something went wrong"}, 500
 
 class UserLogin(Resource):
@@ -108,6 +107,7 @@ class UserLogin(Resource):
         except BadRequest as e:
             return {"message": str(e)}, 400
         except Exception as e:
+            app.logger.error(f"Error during user login: {e}")
             return {"message": "Something went wrong"}, 500
 
 class RecordUserHistory(Resource):
@@ -134,6 +134,7 @@ class RecordUserHistory(Resource):
         except BadRequest as e:
             return {"message": str(e)}, 400
         except Exception as e:
+            app.logger.error(f"Error recording user history: {e}")
             return {"message": "Something went wrong"}, 500
 
     @jwt_required()
@@ -150,83 +151,108 @@ class RecordUserHistory(Resource):
             return jsonify(history_data)
 
         except Exception as e:
+            app.logger.error(f"Error fetching user history: {e}")
             return {"message": "Something went wrong"}, 500
 
 class ListUsers(Resource):
     @jwt_required()
     def get(self):
-        users = User.query.all()
-        return jsonify([{"id": user.id, "email": user.email, "username": user.username} for user in users])
+        try:
+            users = User.query.all()
+            return jsonify([{"id": user.id, "email": user.email, "username": user.username} for user in users])
+        except Exception as e:
+            app.logger.error(f"Error listing users: {e}")
+            return {"message": "Something went wrong"}, 500
 
 class SearchUsers(Resource):
     @jwt_required()
     def get(self):
-        username = request.args.get('username')
-        email = request.args.get('email')
-        user_id = request.args.get('id')
-        
-        if username:
-            user = User.query.filter_by(username=username).first()
-        elif email:
-            user = User.query.filter_by(email=email).first()
-        elif user_id:
-            user = User.query.filter_by(id=user_id).first()
-        else:
-            return {"message": "No search criteria provided"}, 400
-        
-        if user:
-            return {"id": user.id, "email": user.email, "username": user.username}
-        else:
-            return {"message": "User not found"}, 404
+        try:
+            username = request.args.get('username')
+            email = request.args.get('email')
+            user_id = request.args.get('id')
+            
+            if username:
+                user = User.query.filter_by(username=username).first()
+            elif email:
+                user = User.query.filter_by(email=email).first()
+            elif user_id:
+                user = User.query.filter_by(id=user_id).first()
+            else:
+                return {"message": "No search criteria provided"}, 400
+            
+            if user:
+                return {"id": user.id, "email": user.email, "username": user.username}
+            else:
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            app.logger.error(f"Error searching users: {e}")
+            return {"message": "Something went wrong"}, 500
 
 class DeleteUser(Resource):
     @jwt_required()
     def delete(self, user_id):
-        user = User.query.filter_by(id=user_id).first()
-        if user:
-            db.session.delete(user)
-            db.session.commit()
-            return {"message": "User deleted"}, 200
-        else:
-            return {"message": "User not found"}, 404
+        try:
+            user = User.query.filter_by(id=user_id).first()
+            if user:
+                db.session.delete(user)
+                db.session.commit()
+                return {"message": "User deleted"}, 200
+            else:
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            app.logger.error(f"Error deleting user: {e}")
+            return {"message": "Something went wrong"}, 500
 
 class ResetUserEmail(Resource):
     @jwt_required()
     def put(self, user_id):
-        new_email = request.json.get('new_email')
-        user = User.query.filter_by(id=user_id).first()
-        if user:
-            user.email = new_email
-            db.session.commit()
-            return {"message": "Email updated"}, 200
-        else:
-            return {"message": "User not found"}, 404
+        try:
+            new_email = request.json.get('new_email')
+            user = User.query.filter_by(id=user_id).first()
+            if user:
+                user.email = new_email
+                db.session.commit()
+                return {"message": "Email updated"}, 200
+            else:
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            app.logger.error(f"Error resetting user email: {e}")
+            return {"message": "Something went wrong"}, 500
 
 class ResetUserPassword(Resource):
     @jwt_required()
     def put(self, user_id):
-        new_password = request.json.get('new_password')
-        user = User.query.filter_by(id=user_id).first()
-        if user:
-            user.password = generate_password_hash(new_password)
-            db.session.commit()
-            return {"message": "Password updated"}, 200
-        else:
-            return {"message": "User not found"}, 404
+        try:
+            new_password = request.json.get('new_password')
+            user = User.query.filter_by(id=user_id).first()
+            if user:
+                user.password = generate_password_hash(new_password)
+                db.session.commit()
+                return {"message": "Password updated"}, 200
+            else:
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            app.logger.error(f"Error resetting user password: {e}")
+            return {"message": "Something went wrong"}, 500
 
 class PlatformUpdatesResource(Resource):
     @jwt_required()
     def post(self):
-        data = request.get_json()
-        title = data.get('title')
-        content = data.get('content')
-        if not title or not content:
-            return {"message": "Title and content are required"}, 400
-        
-        update = PlatformUpdates(title=title, content=content)
-        db.session.add(update)
-        db.session.commit()
-        return {"message": "Update added"}, 201
+        try:
+            data = request.get_json()
+            title = data.get('title')
+            content = data.get('content')
+            if not title or not content:
+                return {"message": "Title and content are required"}, 400
+            
+            update = PlatformUpdates(title=title, content=content)
+            db.session.add(update)
+            db.session.commit()
+            return {"message": "Update added"}, 201
+        except Exception as e:
+            app.logger.error(f"Error posting platform update: {e}")
+            return {"message": "Something went wrong"}, 500
 
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
