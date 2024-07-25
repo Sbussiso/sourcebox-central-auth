@@ -26,6 +26,7 @@ class User(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
     history = db.relationship('UserHistory', backref='user', lazy=True)
+    packman = db.relationship('Packman', backref='user', lazy=True)
 
 class UserHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,8 +36,27 @@ class UserHistory(db.Model):
 
 class PlatformUpdates(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title =  db.Column(db.String(150), unique=True)
+    title = db.Column(db.String(150), unique=True)
     content = db.Column(db.String(150), unique=True)
+
+class Packman(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    web_data = db.relationship('PackmanWebData', backref='packman', lazy=True)
+    files = db.relationship('PackmanUserFile', backref='packman', lazy=True)
+
+class PackmanWebData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+
+class PackmanUserFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(255), nullable=False)
+    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+
+
 
 class UserRegistration(Resource):
     def post(self):
