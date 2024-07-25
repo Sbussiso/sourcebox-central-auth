@@ -326,7 +326,45 @@ class PackmanWebPack(Resource):
             logger.error(f"Unexpected error processing web pack: {e}")
             return {"message": "Something went wrong"}, 500
 
+
+class PackmanFilePack(Resource):
+    @jwt_required()
+    def post(self):
+        try:
+            current_user_email = get_jwt_identity()
+            data = request.get_json()
+            filename = data.get('filename')
+            filepath = data.get('filepath')
+
+            if not filename or not filepath:
+                logger.error("Filename and filepath are required")
+                return {"message": "Filename and filepath are required"}, 400
+
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            packman_entry = Packman(user_id=user.id)
+            db.session.add(packman_entry)
+            db.session.commit()
+
+            file_data_entry = PackmanUserFile(
+                filename=filename,
+                filepath=filepath,
+                packman_id=packman_entry.id
+            )
+            db.session.add(file_data_entry)
+            db.session.commit()
+
+            logger.info(f"Processed file pack for user {current_user_email}")
+            return {"message": "File processed successfully"}, 201
+        except Exception as e:
+            logger.error(f"Unexpected error processing file pack: {e}")
+            return {"message": "Something went wrong"}, 500
+
 # Register API resources
+api.add_resource(PackmanFilePack, '/packman/file_pack')
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
