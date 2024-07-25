@@ -256,41 +256,7 @@ class PlatformUpdatesResource(Resource):
             return {"message": "Something went wrong"}, 500
 
 
-class PackmanWebPack(Resource):
-    @jwt_required()
-    def post(self):
-        try:
-            current_user_email = get_jwt_identity()
-            data = request.get_json()
-            link = data.get('link')
-            docs = data.get('docs')
-            
-            if not link or not docs:
-                return {"message": "Link and docs are required"}, 400
 
-            user = User.query.filter_by(email=current_user_email).first()
-            if not user:
-                return {"message": "User not found"}, 404
-
-            packman_entry = Packman(user_id=user.id)
-            db.session.add(packman_entry)
-            db.session.commit()
-
-            for doc in docs:
-                web_data_entry = PackmanWebData(
-                    url=link,
-                    content=doc['page_content'],
-                    packman_id=packman_entry.id
-                )
-                db.session.add(web_data_entry)
-            db.session.commit()
-
-            return {"message": "Link processed successfully"}, 201
-        except Exception as e:
-            app.logger.error(f"Error processing web pack: {e}")
-            return {"message": "Something went wrong"}, 500
-
-api.add_resource(PackmanWebPack, '/packman/web_pack')
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
