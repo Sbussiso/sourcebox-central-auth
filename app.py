@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your_jwt_secret_key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiry time
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
 api = Api(app)
 jwt = JWTManager(app)
@@ -72,11 +72,11 @@ class UserRegistration(Resource):
 
             if not email or not username or not password:
                 logger.error("Email, username, and password are required")
-                return jsonify({"message": "Email, username, and password are required"}), 400
+                return {"message": "Email, username, and password are required"}, 400
 
             if User.query.filter_by(email=email).first():
                 logger.error(f"User with email {email} already exists")
-                return jsonify({"message": "User already exists"}), 400
+                return {"message": "User already exists"}, 400
 
             hashed_password = generate_password_hash(password)
             new_user = User(email=email, username=username, password=hashed_password)
@@ -84,18 +84,18 @@ class UserRegistration(Resource):
             db.session.commit()
 
             logger.info(f"User {email} registered successfully")
-            return jsonify({"message": "User registered successfully"}), 201
+            return {"message": "User registered successfully"}, 201
 
         except IntegrityError:
             db.session.rollback()
             logger.error(f"Integrity error for user {email}")
-            return jsonify({"message": "User already exists"}), 400
+            return {"message": "User already exists"}, 400
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return jsonify({"message": str(e)}), 400
+            return {"message": str(e)}, 400
         except Exception as e:
             logger.error(f"Unexpected error during user registration: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class UserLogin(Resource):
     def post(self):
@@ -106,24 +106,24 @@ class UserLogin(Resource):
 
             if not email or not password:
                 logger.error("Email and password are required")
-                return jsonify({"message": "Email and password are required"}), 400
+                return {"message": "Email and password are required"}, 400
 
             user = User.query.filter_by(email=email).first()
 
             if not user or not check_password_hash(user.password, password):
                 logger.error(f"Invalid credentials for email {email}")
-                return jsonify({"message": "Invalid credentials"}), 401
+                return {"message": "Invalid credentials"}, 401
 
             access_token = create_access_token(identity=email)
             logger.info(f"User {email} logged in successfully")
-            return jsonify({"access_token": access_token}), 200
+            return {"access_token": access_token}, 200
 
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return jsonify({"message": str(e)}), 400
+            return {"message": str(e)}, 400
         except Exception as e:
             logger.error(f"Unexpected error during user login: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class RecordUserHistory(Resource):
     @jwt_required()
@@ -135,26 +135,26 @@ class RecordUserHistory(Resource):
             
             if not action:
                 logger.error("Action is required")
-                return jsonify({"message": "Action is required"}), 400
+                return {"message": "Action is required"}, 400
             
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
 
             new_history = UserHistory(user_id=user.id, action=action)
             db.session.add(new_history)
             db.session.commit()
 
             logger.info(f"Recorded history for user {current_user_email}: {action}")
-            return jsonify({"message": "User history recorded successfully"}), 201
+            return {"message": "User history recorded successfully"}, 201
 
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return jsonify({"message": str(e)}), 400
+            return {"message": str(e)}, 400
         except Exception as e:
             logger.error(f"Unexpected error recording user history: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
     @jwt_required()
     def get(self):
@@ -163,7 +163,7 @@ class RecordUserHistory(Resource):
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
             
             history_items = UserHistory.query.filter_by(user_id=user.id).all()
             history_data = [{"action": item.action, "timestamp": item.timestamp.isoformat()} for item in history_items]
@@ -173,7 +173,7 @@ class RecordUserHistory(Resource):
 
         except Exception as e:
             logger.error(f"Unexpected error fetching user history: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class ListUsers(Resource):
     @jwt_required()
@@ -185,7 +185,7 @@ class ListUsers(Resource):
             return jsonify(user_list)
         except Exception as e:
             logger.error(f"Unexpected error listing users: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class SearchUsers(Resource):
     @jwt_required()
@@ -203,7 +203,7 @@ class SearchUsers(Resource):
                 user = User.query.filter_by(id=user_id).first()
             else:
                 logger.error("No search criteria provided")
-                return jsonify({"message": "No search criteria provided"}), 400
+                return {"message": "No search criteria provided"}, 400
             
             if user:
                 user_data = {"id": user.id, "email": user.email, "username": user.username}
@@ -211,10 +211,10 @@ class SearchUsers(Resource):
                 return jsonify(user_data)
             else:
                 logger.error("User not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
         except Exception as e:
             logger.error(f"Unexpected error searching users: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class DeleteUser(Resource):
     @jwt_required()
@@ -225,13 +225,13 @@ class DeleteUser(Resource):
                 db.session.delete(user)
                 db.session.commit()
                 logger.info(f"Deleted user with id {user_id}")
-                return jsonify({"message": "User deleted"}), 200
+                return {"message": "User deleted"}, 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
         except Exception as e:
             logger.error(f"Unexpected error deleting user: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class ResetUserEmail(Resource):
     @jwt_required()
@@ -243,13 +243,13 @@ class ResetUserEmail(Resource):
                 user.email = new_email
                 db.session.commit()
                 logger.info(f"Updated email for user with id {user_id} to {new_email}")
-                return jsonify({"message": "Email updated"}), 200
+                return {"message": "Email updated"}, 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
         except Exception as e:
             logger.error(f"Unexpected error resetting user email: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class ResetUserPassword(Resource):
     @jwt_required()
@@ -261,13 +261,13 @@ class ResetUserPassword(Resource):
                 user.password = generate_password_hash(new_password)
                 db.session.commit()
                 logger.info(f"Updated password for user with id {user_id}")
-                return jsonify({"message": "Password updated"}), 200
+                return {"message": "Password updated"}, 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
         except Exception as e:
             logger.error(f"Unexpected error resetting user password: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class PlatformUpdatesResource(Resource):
     @jwt_required()
@@ -278,16 +278,16 @@ class PlatformUpdatesResource(Resource):
             content = data.get('content')
             if not title or not content:
                 logger.error("Title and content are required")
-                return jsonify({"message": "Title and content are required"}), 400
+                return {"message": "Title and content are required"}, 400
             
             update = PlatformUpdates(title=title, content=content)
             db.session.add(update)
             db.session.commit()
             logger.info("Added platform update")
-            return jsonify({"message": "Update added"}), 201
+            return {"message": "Update added"}, 201
         except Exception as e:
             logger.error(f"Unexpected error posting platform update: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 class PackmanWebPack(Resource):
     @jwt_required()
@@ -300,12 +300,12 @@ class PackmanWebPack(Resource):
             
             if not link or not docs:
                 logger.error("Link and docs are required")
-                return jsonify({"message": "Link and docs are required"}), 400
+                return {"message": "Link and docs are required"}, 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
 
             packman_entry = Packman(user_id=user.id)
             db.session.add(packman_entry)
@@ -321,10 +321,10 @@ class PackmanWebPack(Resource):
             db.session.commit()
 
             logger.info(f"Processed web pack for user {current_user_email}")
-            return jsonify({"message": "Link processed successfully"}), 201
+            return {"message": "Link processed successfully"}, 201
         except Exception as e:
             logger.error(f"Unexpected error processing web pack: {e}")
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 # Register API resources
 api.add_resource(UserRegistration, '/register')
