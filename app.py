@@ -319,9 +319,14 @@ class PackmanWebPack(Resource):
             db.session.commit()
 
             for doc in docs:
+                # Check and truncate content if necessary
+                content = doc['content']
+                if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                    content = content[:65535]
+                
                 web_data_entry = PackmanWebData(
                     url=doc['url'],
-                    content=doc['content'],
+                    content=content,
                     pack_id=packman_entry.id
                 )
                 db.session.add(web_data_entry)
@@ -332,6 +337,7 @@ class PackmanWebPack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error processing web pack: {e}")
             return {"message": "Something went wrong"}, 500
+
 
 class PackmanFilePack(Resource):
     @jwt_required()
