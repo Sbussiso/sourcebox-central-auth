@@ -379,8 +379,29 @@ class PackmanFilePack(Resource):
             logger.error(f"Unexpected error processing file pack: {e}")
             return {"message": "Something went wrong"}, 500
 
-# Register API resources
 
+class ListPacks(Resource):
+    @jwt_required()
+    def get(self):
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            packs = Packman.query.filter_by(user_id=user.id).all()
+            packs_data = [{"id": pack.id, "pack_name": pack.pack_name} for pack in packs]
+
+            logger.info(f"Fetched packs for user {current_user_email}")
+            return jsonify(packs_data)
+
+        except Exception as e:
+            logger.error(f"Unexpected error fetching packs: {e}")
+            return {"message": "Something went wrong"}, 500
+
+
+# Register API resources
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
@@ -392,6 +413,7 @@ api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
 api.add_resource(PackmanWebPack, '/packman/web_pack')
 api.add_resource(PackmanFilePack, '/packman/file_pack')
+api.add_resource(ListPacks, '/packman/list_packs')
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
