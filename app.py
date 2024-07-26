@@ -380,7 +380,7 @@ class PackmanFilePack(Resource):
             return {"message": "Something went wrong"}, 500
 
 
-class ListPacks(Resource):
+class PackmanListPacks(Resource):
     @jwt_required()
     def get(self):
         try:
@@ -391,14 +391,12 @@ class ListPacks(Resource):
                 return {"message": "User not found"}, 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
-            packs_data = [{"id": pack.id, "pack_name": pack.pack_name} for pack in packs]
-
+            pack_list = [{"id": pack.id, "pack_name": pack.pack_name} for pack in packs]
             logger.info(f"Fetched packs for user {current_user_email}")
-            return jsonify(packs_data)
-
+            return jsonify(pack_list)
         except Exception as e:
-            logger.error(f"Unexpected error fetching packs: {e}")
-            return {"message": "Something went wrong"}, 500
+            logger.error(f"Unexpected error listing packs: {e}")
+            return jsonify({"message": "Something went wrong"}), 500
 
 
 # Register API resources
@@ -413,7 +411,7 @@ api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
 api.add_resource(PackmanWebPack, '/packman/web_pack')
 api.add_resource(PackmanFilePack, '/packman/file_pack')
-api.add_resource(ListPacks, '/packman/list_packs')
+api.add_resource(PackmanListPacks, '/packman/list_packs')
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
