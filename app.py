@@ -59,7 +59,6 @@ class PackmanPack(db.Model):
 
 class PackmanWebData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text, nullable=False)
     pack_id = db.Column(db.Integer, db.ForeignKey('packman_pack.id'), nullable=False)
 
@@ -319,19 +318,17 @@ class PackmanWebPack(Resource):
             db.session.commit()
 
             for doc in docs:
-                url = doc.get('url')
                 content = doc.get('content')
 
-                if not url or not content:
-                    logger.error("URL and content are required for each document")
-                    return {"message": "URL and content are required for each document"}, 400
+                if not content:
+                    logger.error("Content is required for each document")
+                    return {"message": "Content is required for each document"}, 400
 
                 # Check and truncate content if necessary
                 if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
                     content = content[:65535]
 
                 web_data_entry = PackmanWebData(
-                    url=url,
                     content=content,
                     pack_id=packman_entry.id
                 )
