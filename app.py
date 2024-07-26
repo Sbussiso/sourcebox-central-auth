@@ -31,7 +31,7 @@ class User(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
     history = db.relationship('UserHistory', backref='user', lazy=True)
-    packman = db.relationship('Packman', backref='user', lazy=True)
+    packs = db.relationship('Packman', backref='user', lazy=True)
 
 class UserHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,20 +47,27 @@ class PlatformUpdates(db.Model):
 class Packman(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    web_data = db.relationship('PackmanWebData', backref='packman', lazy=True)
-    files = db.relationship('PackmanUserFile', backref='packman', lazy=True)
+    pack_name = db.Column(db.String(150), nullable=False)
+    packs = db.relationship('PackmanPack', backref='packman', lazy=True)
+
+class PackmanPack(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pack_name = db.Column(db.String(150), nullable=False)
+    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+    web_data = db.relationship('PackmanWebData', backref='pack', lazy=True)
+    files = db.relationship('PackmanUserFile', backref='pack', lazy=True)
 
 class PackmanWebData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+    pack_id = db.Column(db.Integer, db.ForeignKey('packman_pack.id'), nullable=False)
 
 class PackmanUserFile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     filepath = db.Column(db.String(255), nullable=False)
-    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+    pack_id = db.Column(db.Integer, db.ForeignKey('packman_pack.id'), nullable=False)
 
 class UserRegistration(Resource):
     def post(self):
@@ -295,27 +302,27 @@ class PackmanWebPack(Resource):
         try:
             current_user_email = get_jwt_identity()
             data = request.get_json()
-            link = data.get('link')
+            pack_name = data.get('pack_name')
             docs = data.get('docs')
-            
-            if not link or not docs:
-                logger.error("Link and docs are required")
-                return {"message": "Link and docs are required"}, 400
+
+            if not pack_name or not docs:
+                logger.error("Pack name and docs are required")
+                return {"message": "Pack name and docs are required"}, 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
                 return {"message": "User not found"}, 404
 
-            packman_entry = Packman(user_id=user.id)
+            packman_entry = Packman(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_entry)
             db.session.commit()
 
             for doc in docs:
                 web_data_entry = PackmanWebData(
-                    url=link,
-                    content=doc['page_content'],
-                    packman_id=packman_entry.id
+                    url=doc['url'],
+                    content=doc['content'],
+                    pack_id=packman_entry.id
                 )
                 db.session.add(web_data_entry)
             db.session.commit()
@@ -326,33 +333,33 @@ class PackmanWebPack(Resource):
             logger.error(f"Unexpected error processing web pack: {e}")
             return {"message": "Something went wrong"}, 500
 
-
 class PackmanFilePack(Resource):
     @jwt_required()
     def post(self):
         try:
             current_user_email = get_jwt_identity()
             data = request.get_json()
+            pack_name = data.get('pack_name')
             filename = data.get('filename')
             filepath = data.get('filepath')
 
-            if not filename or not filepath:
-                logger.error("Filename and filepath are required")
-                return {"message": "Filename and filepath are required"}, 400
+            if not pack_name or not filename or not filepath:
+                logger.error("Pack name, filename, and filepath are required")
+                return {"message": "Pack name, filename, and filepath are required"}, 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
                 return {"message": "User not found"}, 404
 
-            packman_entry = Packman(user_id=user.id)
+            packman_entry = Packman(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_entry)
             db.session.commit()
 
             file_data_entry = PackmanUserFile(
                 filename=filename,
                 filepath=filepath,
-                packman_id=packman_entry.id
+                pack_id=packman_entry.id
             )
             db.session.add(file_data_entry)
             db.session.commit()
@@ -364,7 +371,7 @@ class PackmanFilePack(Resource):
             return {"message": "Something went wrong"}, 500
 
 # Register API resources
-api.add_resource(PackmanFilePack, '/packman/file_pack')
+
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
 api.add_resource(RecordUserHistory, '/user_history')
@@ -375,6 +382,7 @@ api.add_resource(ResetUserEmail, '/users/<int:user_id>/email')
 api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
 api.add_resource(PackmanWebPack, '/packman/web_pack')
+api.add_resource(PackmanFilePack, '/packman/file_pack')
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
