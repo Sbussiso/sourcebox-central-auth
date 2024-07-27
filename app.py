@@ -391,7 +391,28 @@ class PackmanListPacks(Resource):
                 return {"message": "User not found"}, 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
-            pack_list = [{"id": pack.id, "pack_name": pack.pack_name} for pack in packs]
+            pack_list = []
+            for pack in packs:
+                pack_data = {
+                    "id": pack.id,
+                    "pack_name": pack.pack_name,
+                    "links": [],
+                    "files": []
+                }
+                for pack_item in pack.packs:
+                    web_data = PackmanWebData.query.filter_by(pack_id=pack_item.id).all()
+                    file_data = PackmanUserFile.query.filter_by(pack_id=pack_item.id).all()
+
+                    for web in web_data:
+                        pack_data["links"].append(web.content)
+                    for file in file_data:
+                        pack_data["files"].append({
+                            "filename": file.filename,
+                            "filepath": file.filepath
+                        })
+
+                pack_list.append(pack_data)
+
             logger.info(f"Fetched packs for user {current_user_email}")
             return jsonify(pack_list)
         except Exception as e:
