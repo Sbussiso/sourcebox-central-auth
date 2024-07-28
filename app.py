@@ -295,23 +295,23 @@ class PackmanPack(Resource):
 
             if not pack_name or not docs:
                 logger.error("Pack name and docs are required")
-                return {"message": "Pack name and docs are required"}, 400
+                return jsonify({"message": "Pack name and docs are required"}), 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
 
             packman_entry = Packman(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_entry)
             db.session.commit()
 
             for doc in docs:
-                if doc['type'] == 'link':
+                if doc['data_type'] == 'link':
                     content = doc.get('content')
                     if not content:
                         logger.error("Content is required for each document")
-                        return {"message": "Content is required for each document"}, 400
+                        return jsonify({"message": "Content is required for each document"}), 400
 
                     # Check and truncate content if necessary
                     if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
@@ -324,12 +324,12 @@ class PackmanPack(Resource):
                     )
                     db.session.add(pack_entry)
 
-                elif doc['type'] == 'file':
+                elif doc['data_type'] == 'file':
                     filename = doc.get('filename')
                     filepath = doc.get('filepath')
                     if not filename or not filepath:
                         logger.error("Filename and filepath are required for each file")
-                        return {"message": "Filename and filepath are required for each file"}, 400
+                        return jsonify({"message": "Filename and filepath are required for each file"}), 400
 
                     with open(filepath, 'r') as file:
                         content = file.read()
@@ -345,10 +345,10 @@ class PackmanPack(Resource):
             db.session.commit()
 
             logger.info(f"Processed pack for user {current_user_email}")
-            return {"message": "Pack processed successfully"}, 201
+            return jsonify({"message": "Pack processed successfully"}), 201
         except Exception as e:
             logger.error(f"Unexpected error processing pack: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class PackmanListPacks(Resource):
     @jwt_required()
@@ -358,7 +358,7 @@ class PackmanListPacks(Resource):
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
             pack_list = []
