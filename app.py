@@ -67,11 +67,11 @@ class UserRegistration(Resource):
 
             if not email or not username or not password:
                 logger.error("Email, username, and password are required")
-                return {"message": "Email, username, and password are required"}, 400
+                return jsonify({"message": "Email, username, and password are required"}), 400
 
             if User.query.filter_by(email=email).first():
                 logger.error(f"User with email {email} already exists")
-                return {"message": "User already exists"}, 400
+                return jsonify({"message": "User already exists"}), 400
 
             hashed_password = generate_password_hash(password)
             new_user = User(email=email, username=username, password=hashed_password)
@@ -79,18 +79,18 @@ class UserRegistration(Resource):
             db.session.commit()
 
             logger.info(f"User {email} registered successfully")
-            return {"message": "User registered successfully"}, 201
+            return jsonify({"message": "User registered successfully"}), 201
 
         except IntegrityError:
             db.session.rollback()
             logger.error(f"Integrity error for user {email}")
-            return {"message": "User already exists"}, 400
+            return jsonify({"message": "User already exists"}), 400
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return {"message": str(e)}, 400
+            return jsonify({"message": str(e)}), 400
         except Exception as e:
             logger.error(f"Unexpected error during user registration: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class UserLogin(Resource):
     def post(self):
@@ -101,24 +101,24 @@ class UserLogin(Resource):
 
             if not email or not password:
                 logger.error("Email and password are required")
-                return {"message": "Email and password are required"}, 400
+                return jsonify({"message": "Email and password are required"}), 400
 
             user = User.query.filter_by(email=email).first()
 
             if not user or not check_password_hash(user.password, password):
                 logger.error(f"Invalid credentials for email {email}")
-                return {"message": "Invalid credentials"}, 401
+                return jsonify({"message": "Invalid credentials"}), 401
 
             access_token = create_access_token(identity=email)
             logger.info(f"User {email} logged in successfully")
-            return {"access_token": access_token}, 200
+            return jsonify({"access_token": access_token}), 200
 
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return {"message": str(e)}, 400
+            return jsonify({"message": str(e)}), 400
         except Exception as e:
             logger.error(f"Unexpected error during user login: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class RecordUserHistory(Resource):
     @jwt_required()
@@ -130,26 +130,26 @@ class RecordUserHistory(Resource):
             
             if not action:
                 logger.error("Action is required")
-                return {"message": "Action is required"}, 400
+                return jsonify({"message": "Action is required"}), 400
             
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
 
             new_history = UserHistory(user_id=user.id, action=action)
             db.session.add(new_history)
             db.session.commit()
 
             logger.info(f"Recorded history for user {current_user_email}: {action}")
-            return {"message": "User history recorded successfully"}, 201
+            return jsonify({"message": "User history recorded successfully"}), 201
 
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
-            return {"message": str(e)}, 400
+            return jsonify({"message": str(e)}), 400
         except Exception as e:
             logger.error(f"Unexpected error recording user history: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
     @jwt_required()
     def get(self):
@@ -158,7 +158,7 @@ class RecordUserHistory(Resource):
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
             
             history_items = UserHistory.query.filter_by(user_id=user.id).all()
             history_data = [{"action": item.action, "timestamp": item.timestamp.isoformat()} for item in history_items]
@@ -168,7 +168,7 @@ class RecordUserHistory(Resource):
 
         except Exception as e:
             logger.error(f"Unexpected error fetching user history: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class ListUsers(Resource):
     @jwt_required()
@@ -180,7 +180,7 @@ class ListUsers(Resource):
             return jsonify(user_list)
         except Exception as e:
             logger.error(f"Unexpected error listing users: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class SearchUsers(Resource):
     @jwt_required()
@@ -198,7 +198,7 @@ class SearchUsers(Resource):
                 user = User.query.filter_by(id=user_id).first()
             else:
                 logger.error("No search criteria provided")
-                return {"message": "No search criteria provided"}, 400
+                return jsonify({"message": "No search criteria provided"}), 400
             
             if user:
                 user_data = {"id": user.id, "email": user.email, "username": user.username}
@@ -206,10 +206,10 @@ class SearchUsers(Resource):
                 return jsonify(user_data)
             else:
                 logger.error("User not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
         except Exception as e:
             logger.error(f"Unexpected error searching users: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class DeleteUser(Resource):
     @jwt_required()
@@ -220,13 +220,13 @@ class DeleteUser(Resource):
                 db.session.delete(user)
                 db.session.commit()
                 logger.info(f"Deleted user with id {user_id}")
-                return {"message": "User deleted"}, 200
+                return jsonify({"message": "User deleted"}), 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
         except Exception as e:
             logger.error(f"Unexpected error deleting user: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class ResetUserEmail(Resource):
     @jwt_required()
@@ -238,13 +238,13 @@ class ResetUserEmail(Resource):
                 user.email = new_email
                 db.session.commit()
                 logger.info(f"Updated email for user with id {user_id} to {new_email}")
-                return {"message": "Email updated"}, 200
+                return jsonify({"message": "Email updated"}), 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
         except Exception as e:
             logger.error(f"Unexpected error resetting user email: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class ResetUserPassword(Resource):
     @jwt_required()
@@ -256,13 +256,13 @@ class ResetUserPassword(Resource):
                 user.password = generate_password_hash(new_password)
                 db.session.commit()
                 logger.info(f"Updated password for user with id {user_id}")
-                return {"message": "Password updated"}, 200
+                return jsonify({"message": "Password updated"}), 200
             else:
                 logger.error(f"User with id {user_id} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
         except Exception as e:
             logger.error(f"Unexpected error resetting user password: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class PlatformUpdatesResource(Resource):
     @jwt_required()
@@ -273,16 +273,16 @@ class PlatformUpdatesResource(Resource):
             content = data.get('content')
             if not title or not content:
                 logger.error("Title and content are required")
-                return {"message": "Title and content are required"}, 400
+                return jsonify({"message": "Title and content are required"}), 400
             
             update = PlatformUpdates(title=title, content=content)
             db.session.add(update)
             db.session.commit()
             logger.info("Added platform update")
-            return {"message": "Update added"}, 201
+            return jsonify({"message": "Update added"}), 201
         except Exception as e:
             logger.error(f"Unexpected error posting platform update: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class PackmanPack(Resource):
     @jwt_required()
@@ -295,23 +295,23 @@ class PackmanPack(Resource):
 
             if not pack_name or not docs:
                 logger.error("Pack name and docs are required")
-                return {"message": "Pack name and docs are required"}, 400
+                return jsonify({"message": "Pack name and docs are required"}), 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
 
             packman_entry = Packman(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_entry)
             db.session.commit()
 
             for doc in docs:
-                if doc['type'] == 'link':
+                if doc['data_type'] == 'link':
                     content = doc.get('content')
                     if not content:
                         logger.error("Content is required for each document")
-                        return {"message": "Content is required for each document"}, 400
+                        return jsonify({"message": "Content is required for each document"}), 400
 
                     # Check and truncate content if necessary
                     if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
@@ -324,12 +324,12 @@ class PackmanPack(Resource):
                     )
                     db.session.add(pack_entry)
 
-                elif doc['type'] == 'file':
+                elif doc['data_type'] == 'file':
                     filename = doc.get('filename')
                     filepath = doc.get('filepath')
                     if not filename or not filepath:
                         logger.error("Filename and filepath are required for each file")
-                        return {"message": "Filename and filepath are required for each file"}, 400
+                        return jsonify({"message": "Filename and filepath are required for each file"}), 400
 
                     with open(filepath, 'r') as file:
                         content = file.read()
@@ -345,10 +345,10 @@ class PackmanPack(Resource):
             db.session.commit()
 
             logger.info(f"Processed pack for user {current_user_email}")
-            return {"message": "Pack processed successfully"}, 201
+            return jsonify({"message": "Pack processed successfully"}), 201
         except Exception as e:
             logger.error(f"Unexpected error processing pack: {e}")
-            return {"message": "Something went wrong"}, 500
+            return jsonify({"message": "Something went wrong"}), 500
 
 class PackmanListPacks(Resource):
     @jwt_required()
@@ -358,7 +358,7 @@ class PackmanListPacks(Resource):
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
+                return jsonify({"message": "User not found"}), 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
             pack_list = []
