@@ -57,6 +57,12 @@ class PackmanPack(db.Model):
     data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
     filename = db.Column(db.String(255), nullable=True)
 
+    def __init__(self, packman_id, content, data_type, filename=None):
+        self.packman_id = packman_id
+        self.content = content
+        self.data_type = data_type
+        self.filename = filename
+
 class UserRegistration(Resource):
     def post(self):
         try:
