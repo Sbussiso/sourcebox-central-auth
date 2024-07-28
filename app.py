@@ -6,8 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 from marshmallow import Schema, fields
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from flask_marshmallow import Marshmallow
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 import os
 from datetime import datetime, timedelta
 import logging
@@ -21,7 +20,6 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 api = Api(app)
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
-ma = Marshmallow(app)  # Initialize Marshmallow
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -61,39 +59,46 @@ class PackmanPack(db.Model):
     data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
     filename = db.Column(db.String(255), nullable=True)
 
-    def __init__(self, packman_id, content, data_type, filename=None):
-        self.packman_id = packman_id
-        self.content = content
-        self.data_type = data_type
-        self.filename = filename
-
 class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
+        include_relationships = True
         load_instance = True
 
 class UserHistorySchema(SQLAlchemyAutoSchema):
     class Meta:
         model = UserHistory
+        include_relationships = True
         load_instance = True
 
 class PlatformUpdatesSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = PlatformUpdates
+        include_relationships = True
         load_instance = True
 
 class PackmanSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Packman
+        include_relationships = True
         load_instance = True
 
 class PackmanPackSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = PackmanPack
+        include_relationships = True
         load_instance = True
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+user_history_schema = UserHistorySchema()
+user_histories_schema = UserHistorySchema(many=True)
+platform_update_schema = PlatformUpdatesSchema()
+platform_updates_schema = PlatformUpdatesSchema(many=True)
+packman_schema = PackmanSchema()
+packmans_schema = PackmanSchema(many=True)
+packman_pack_schema = PackmanPackSchema()
+packman_packs_schema = PackmanPackSchema(many=True)
 
 class UserRegistration(Resource):
     def post(self):
@@ -119,7 +124,7 @@ class UserRegistration(Resource):
             db.session.commit()
 
             logger.info(f"User {email} registered successfully")
-            return {"message": "User registered successfully"}, 201
+            return user_schema.dump(new_user), 201
 
         except IntegrityError:
             db.session.rollback()
@@ -186,7 +191,7 @@ class RecordUserHistory(Resource):
             db.session.commit()
 
             logger.info(f"Recorded history for user {current_user_email}: {action}")
-            return {"message": "User history recorded successfully"}, 201
+            return user_history_schema.dump(new_history), 201
 
         except BadRequest as e:
             logger.error(f"Bad request: {e}")
@@ -206,7 +211,7 @@ class RecordUserHistory(Resource):
                 return {"message": "User not found"}, 404
             
             history_items = UserHistory.query.filter_by(user_id=user.id).all()
-            history_data = [{"action": item.action, "timestamp": item.timestamp.isoformat()} for item in history_items]
+            history_data = user_histories_schema.dump(history_items)
 
             logger.info(f"Fetched history for user {current_user_email}")
             return jsonify(history_data)
@@ -221,7 +226,7 @@ class ListUsers(Resource):
         logger.info("Entered ListUsers get method")
         try:
             users = User.query.all()
-            user_list = [{"id": user.id, "email": user.email, "username": user.username} for user in users]
+            user_list = users_schema.dump(users)
             logger.info("Fetched list of users")
             return jsonify(user_list)
         except Exception as e:
@@ -248,7 +253,7 @@ class SearchUsers(Resource):
                 return {"message": "No search criteria provided"}, 400
             
             if user:
-                user_data = {"id": user.id, "email": user.email, "username": user.username}
+                user_data = user_schema.dump(user)
                 logger.info(f"Found user: {user_data}")
                 return jsonify(user_data)
             else:
@@ -331,7 +336,7 @@ class PlatformUpdatesResource(Resource):
             db.session.add(update)
             db.session.commit()
             logger.info("Added platform update")
-            return {"message": "Update added"}, 201
+            return platform_update_schema.dump(update), 201
         except Exception as e:
             logger.error(f"Unexpected error posting platform update: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
@@ -352,12 +357,12 @@ class PackmanPackResource(Resource):
 
             if not pack_name or not contents:
                 logger.error("Pack name and contents are required")
-                return jsonify({"message": "Pack name and contents are required"}), 400
+                return {"message": "Pack name and contents are required"}, 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
 
             packman_entry = Packman(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_entry)
@@ -370,7 +375,7 @@ class PackmanPackResource(Resource):
 
                 if not data_type or not text_content:
                     logger.error("Data type and content are required for each entry")
-                    return jsonify({"message": "Data type and content are required for each entry"}), 400
+                    return {"message": "Data type and content are required for each entry"}, 400
 
                 # Check and truncate content if necessary
                 if len(text_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
@@ -388,10 +393,10 @@ class PackmanPackResource(Resource):
             db.session.commit()
 
             logger.info(f"Processed pack for user {current_user_email}")
-            return jsonify({"message": "Pack processed successfully"}), 201
+            return packman_schema.dump(packman_entry), 201
         except Exception as e:
             logger.error(f"Unexpected error processing pack: {e}", exc_info=True)
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 
 class PackmanListPacks(Resource):
@@ -403,30 +408,16 @@ class PackmanListPacks(Resource):
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
                 logger.error(f"User with email {current_user_email} not found")
-                return jsonify({"message": "User not found"}), 404
+                return {"message": "User not found"}, 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
-            pack_list = []
-            for pack in packs:
-                pack_data = {
-                    "id": pack.id,
-                    "pack_name": pack.pack_name,
-                    "contents": []
-                }
-                for pack_item in pack.packs:
-                    pack_data["contents"].append({
-                        "content": pack_item.content,
-                        "data_type": pack_item.data_type,
-                        "filename": pack_item.filename
-                    })
-
-                pack_list.append(pack_data)
+            pack_list = packmans_schema.dump(packs)
 
             logger.info(f"Fetched packs for user {current_user_email}")
             return jsonify(pack_list)
         except Exception as e:
             logger.error(f"Unexpected error listing packs: {e}", exc_info=True)
-            return jsonify({"message": "Something went wrong"}), 500
+            return {"message": "Something went wrong"}, 500
 
 # Register API resources
 api.add_resource(UserRegistration, '/register')
