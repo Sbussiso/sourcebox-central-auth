@@ -326,17 +326,18 @@ class PackmanPack(Resource):
 
                 elif doc['data_type'] == 'file':
                     filename = doc.get('filename')
-                    filepath = doc.get('filepath')
-                    if not filename or not filepath:
-                        logger.error("Filename and filepath are required for each file")
-                        return jsonify({"message": "Filename and filepath are required for each file"}), 400
+                    file_content = doc.get('content')
+                    if not filename or not file_content:
+                        logger.error("Filename and file content are required for each file")
+                        return jsonify({"message": "Filename and file content are required for each file"}), 400
 
-                    with open(filepath, 'r') as file:
-                        content = file.read()
+                    # Check and truncate content if necessary
+                    if len(file_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                        file_content = file_content[:65535]
 
                     pack_entry = PackmanPack(
                         packman_id=packman_entry.id,
-                        content=content,
+                        content=file_content,
                         data_type='file',
                         filename=filename
                     )
