@@ -290,7 +290,7 @@ class PlatformUpdatesResource(Resource):
             logger.error(f"Unexpected error posting platform update: {e}")
             return {"message": "Something went wrong"}, 500
 
-class PackmanPackResource(Resource):
+class PackmanPack(Resource):
     @jwt_required()
     def post(self):
         try:
@@ -389,7 +389,7 @@ api.add_resource(DeleteUser, '/users/<int:user_id>')
 api.add_resource(ResetUserEmail, '/users/<int:user_id>/email')
 api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
-api.add_resource(PackmanPackResource, '/packman/pack')
+api.add_resource(PackmanPack, '/packman/pack')
 api.add_resource(PackmanListPacks, '/packman/list_packs')
 
 # Error handler for 404 Not Found
