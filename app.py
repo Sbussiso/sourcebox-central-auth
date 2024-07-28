@@ -5,7 +5,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
-from marshmallow import Schema, fields, validate, ValidationError
+from marshmallow import Schema, fields
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from flask_marshmallow import Marshmallow
 import os
 from datetime import datetime, timedelta
@@ -20,7 +21,7 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 api = Api(app)
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
-ma = Marshmallow(app)
+ma = Marshmallow(app)  # Initialize Marshmallow
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -66,30 +67,33 @@ class PackmanPack(db.Model):
         self.data_type = data_type
         self.filename = filename
 
-class UserSchema(ma.SQLAlchemyAutoSchema):
+class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
 
-class UserHistorySchema(ma.SQLAlchemyAutoSchema):
+class UserHistorySchema(SQLAlchemyAutoSchema):
     class Meta:
         model = UserHistory
         load_instance = True
 
-class PlatformUpdatesSchema(ma.SQLAlchemyAutoSchema):
+class PlatformUpdatesSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = PlatformUpdates
         load_instance = True
 
-class PackmanSchema(ma.SQLAlchemyAutoSchema):
+class PackmanSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Packman
         load_instance = True
 
-class PackmanPackSchema(ma.SQLAlchemyAutoSchema):
+class PackmanPackSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = PackmanPack
         load_instance = True
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
 
 class UserRegistration(Resource):
     def post(self):
