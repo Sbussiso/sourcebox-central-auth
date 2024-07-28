@@ -290,6 +290,10 @@ class PackmanPack(Resource):
         try:
             current_user_email = get_jwt_identity()
             data = request.get_json()
+            
+            # Log the received data
+            logger.info(f"Received data: {data}")
+            
             pack_name = data.get('pack_name')
             docs = data.get('docs')
 
@@ -350,6 +354,7 @@ class PackmanPack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error processing pack: {e}")
             return jsonify({"message": "Something went wrong"}), 500
+
 
 
 
