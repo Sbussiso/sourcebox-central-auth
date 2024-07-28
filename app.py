@@ -284,7 +284,7 @@ class PlatformUpdatesResource(Resource):
             logger.error(f"Unexpected error posting platform update: {e}")
             return {"message": "Something went wrong"}, 500
 
-class PackmanWebPack(Resource):
+class PackmanPack(Resource):
     @jwt_required()
     def post(self):
         try:
@@ -307,70 +307,47 @@ class PackmanWebPack(Resource):
             db.session.commit()
 
             for doc in docs:
-                content = doc.get('content')
+                if doc['type'] == 'link':
+                    content = doc.get('content')
+                    if not content:
+                        logger.error("Content is required for each document")
+                        return {"message": "Content is required for each document"}, 400
 
-                if not content:
-                    logger.error("Content is required for each document")
-                    return {"message": "Content is required for each document"}, 400
+                    # Check and truncate content if necessary
+                    if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                        content = content[:65535]
 
-                # Check and truncate content if necessary
-                if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
-                    content = content[:65535]
+                    pack_entry = PackmanPack(
+                        packman_id=packman_entry.id,
+                        content=content,
+                        data_type='link'
+                    )
+                    db.session.add(pack_entry)
 
-                pack_entry = PackmanPack(
-                    packman_id=packman_entry.id,
-                    content=content,
-                    data_type='link'
-                )
-                db.session.add(pack_entry)
+                elif doc['type'] == 'file':
+                    filename = doc.get('filename')
+                    filepath = doc.get('filepath')
+                    if not filename or not filepath:
+                        logger.error("Filename and filepath are required for each file")
+                        return {"message": "Filename and filepath are required for each file"}, 400
+
+                    with open(filepath, 'r') as file:
+                        content = file.read()
+
+                    pack_entry = PackmanPack(
+                        packman_id=packman_entry.id,
+                        content=content,
+                        data_type='file',
+                        filename=filename
+                    )
+                    db.session.add(pack_entry)
+
             db.session.commit()
 
-            logger.info(f"Processed web pack for user {current_user_email}")
-            return {"message": "Link processed successfully"}, 201
+            logger.info(f"Processed pack for user {current_user_email}")
+            return {"message": "Pack processed successfully"}, 201
         except Exception as e:
-            logger.error(f"Unexpected error processing web pack: {e}")
-            return {"message": "Something went wrong"}, 500
-
-
-class PackmanFilePack(Resource):
-    @jwt_required()
-    def post(self):
-        try:
-            current_user_email = get_jwt_identity()
-            data = request.get_json()
-            pack_name = data.get('pack_name')
-            filename = data.get('filename')
-            filepath = data.get('filepath')
-
-            if not pack_name or not filename or not filepath:
-                logger.error("Pack name, filename, and filepath are required")
-                return {"message": "Pack name, filename, and filepath are required"}, 400
-
-            user = User.query.filter_by(email=current_user_email).first()
-            if not user:
-                logger.error(f"User with email {current_user_email} not found")
-                return {"message": "User not found"}, 404
-
-            packman_entry = Packman(user_id=user.id, pack_name=pack_name)
-            db.session.add(packman_entry)
-            db.session.commit()
-
-            with open(filepath, 'r') as file:
-                content = file.read()
-
-            pack_entry = PackmanPack(
-                packman_id=packman_entry.id,
-                content=content,
-                data_type='file',
-                filename=filename
-            )
-            db.session.add(pack_entry)
-            db.session.commit()
-
-            logger.info(f"Processed file pack for user {current_user_email}")
-            return {"message": "File processed successfully"}, 201
-        except Exception as e:
-            logger.error(f"Unexpected error processing file pack: {e}")
+            logger.error(f"Unexpected error processing pack: {e}")
             return {"message": "Something went wrong"}, 500
 
 class PackmanListPacks(Resource):
@@ -416,8 +393,7 @@ api.add_resource(DeleteUser, '/users/<int:user_id>')
 api.add_resource(ResetUserEmail, '/users/<int:user_id>/email')
 api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
-api.add_resource(PackmanWebPack, '/packman/web_pack')
-api.add_resource(PackmanFilePack, '/packman/file_pack')
+api.add_resource(PackmanPack, '/packman/pack')
 api.add_resource(PackmanListPacks, '/packman/list_packs')
 
 # Error handler for 404 Not Found
