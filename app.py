@@ -307,7 +307,7 @@ class PackmanPack(Resource):
             db.session.commit()
 
             for doc in docs:
-                if doc['type'] == 'link':
+                if doc['data_type'] == 'link':
                     content = doc.get('content')
                     if not content:
                         logger.error("Content is required for each document")
@@ -324,7 +324,7 @@ class PackmanPack(Resource):
                     )
                     db.session.add(pack_entry)
 
-                elif doc['type'] == 'file':
+                elif doc['data_type'] == 'file':
                     filename = doc.get('filename')
                     filepath = doc.get('filepath')
                     if not filename or not filepath:
