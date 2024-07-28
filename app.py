@@ -295,11 +295,11 @@ class PackmanPack(Resource):
             logger.info(f"Received data: {data}")
             
             pack_name = data.get('pack_name')
-            docs = data.get('docs')
+            docs = data.get('contents')
 
             if not pack_name or not docs:
-                logger.error("Pack name and docs are required")
-                return jsonify({"message": "Pack name and docs are required"}), 400
+                logger.error("Pack name and contents are required")
+                return jsonify({"message": "Pack name and contents are required"}), 400
 
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
@@ -354,8 +354,6 @@ class PackmanPack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error processing pack: {e}")
             return jsonify({"message": "Something went wrong"}), 500
-
-
 
 
 class PackmanListPacks(Resource):
