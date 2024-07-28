@@ -295,9 +295,9 @@ class PackmanPack(Resource):
             logger.info(f"Received data: {data}")
             
             pack_name = data.get('pack_name')
-            docs = data.get('contents')
+            contents = data.get('contents')
 
-            if not pack_name or not docs:
+            if not pack_name or not contents:
                 logger.error("Pack name and contents are required")
                 return jsonify({"message": "Pack name and contents are required"}), 400
 
@@ -310,42 +310,26 @@ class PackmanPack(Resource):
             db.session.add(packman_entry)
             db.session.commit()
 
-            for doc in docs:
-                if doc['data_type'] == 'link':
-                    content = doc.get('content')
-                    if not content:
-                        logger.error("Content is required for each document")
-                        return jsonify({"message": "Content is required for each document"}), 400
+            for content in contents:
+                data_type = content.get('data_type')
+                text_content = content.get('content')
+                filename = content.get('filename')
 
-                    # Check and truncate content if necessary
-                    if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
-                        content = content[:65535]
+                if not data_type or not text_content:
+                    logger.error("Data type and content are required for each entry")
+                    return jsonify({"message": "Data type and content are required for each entry"}), 400
 
-                    pack_entry = PackmanPack(
-                        packman_id=packman_entry.id,
-                        content=content,
-                        data_type='link'
-                    )
-                    db.session.add(pack_entry)
+                # Check and truncate content if necessary
+                if len(text_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                    text_content = text_content[:65535]
 
-                elif doc['data_type'] == 'file':
-                    filename = doc.get('filename')
-                    file_content = doc.get('content')
-                    if not filename or not file_content:
-                        logger.error("Filename and file content are required for each file")
-                        return jsonify({"message": "Filename and file content are required for each file"}), 400
-
-                    # Check and truncate content if necessary
-                    if len(file_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
-                        file_content = file_content[:65535]
-
-                    pack_entry = PackmanPack(
-                        packman_id=packman_entry.id,
-                        content=file_content,
-                        data_type='file',
-                        filename=filename
-                    )
-                    db.session.add(pack_entry)
+                pack_entry = PackmanPack(
+                    packman_id=packman_entry.id,
+                    content=text_content,
+                    data_type=data_type,
+                    filename=filename
+                )
+                db.session.add(pack_entry)
 
             db.session.commit()
 
