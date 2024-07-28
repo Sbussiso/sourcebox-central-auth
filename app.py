@@ -65,8 +65,10 @@ class PackmanPack(db.Model):
 
 class UserRegistration(Resource):
     def post(self):
+        logger.info("Entered UserRegistration post method")
         try:
             data = request.get_json()
+            logger.info(f"Received registration data: {data}")
             email = data.get('email')
             username = data.get('username')
             password = data.get('password')
@@ -95,13 +97,15 @@ class UserRegistration(Resource):
             logger.error(f"Bad request: {e}")
             return {"message": str(e)}, 400
         except Exception as e:
-            logger.error(f"Unexpected error during user registration: {e}")
+            logger.error(f"Unexpected error during user registration: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class UserLogin(Resource):
     def post(self):
+        logger.info("Entered UserLogin post method")
         try:
             data = request.get_json()
+            logger.info(f"Received login data: {data}")
             email = data.get('email')
             password = data.get('password')
 
@@ -123,15 +127,17 @@ class UserLogin(Resource):
             logger.error(f"Bad request: {e}")
             return {"message": str(e)}, 400
         except Exception as e:
-            logger.error(f"Unexpected error during user login: {e}")
+            logger.error(f"Unexpected error during user login: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class RecordUserHistory(Resource):
     @jwt_required()
     def post(self):
+        logger.info("Entered RecordUserHistory post method")
         try:
             current_user_email = get_jwt_identity()
             data = request.get_json()
+            logger.info(f"Received history data: {data} from user {current_user_email}")
             action = data.get('action')
             
             if not action:
@@ -154,11 +160,12 @@ class RecordUserHistory(Resource):
             logger.error(f"Bad request: {e}")
             return {"message": str(e)}, 400
         except Exception as e:
-            logger.error(f"Unexpected error recording user history: {e}")
+            logger.error(f"Unexpected error recording user history: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
     @jwt_required()
     def get(self):
+        logger.info("Entered RecordUserHistory get method")
         try:
             current_user_email = get_jwt_identity()
             user = User.query.filter_by(email=current_user_email).first()
@@ -173,24 +180,26 @@ class RecordUserHistory(Resource):
             return jsonify(history_data)
 
         except Exception as e:
-            logger.error(f"Unexpected error fetching user history: {e}")
+            logger.error(f"Unexpected error fetching user history: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class ListUsers(Resource):
     @jwt_required()
     def get(self):
+        logger.info("Entered ListUsers get method")
         try:
             users = User.query.all()
             user_list = [{"id": user.id, "email": user.email, "username": user.username} for user in users]
             logger.info("Fetched list of users")
             return jsonify(user_list)
         except Exception as e:
-            logger.error(f"Unexpected error listing users: {e}")
+            logger.error(f"Unexpected error listing users: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class SearchUsers(Resource):
     @jwt_required()
     def get(self):
+        logger.info("Entered SearchUsers get method")
         try:
             username = request.args.get('username')
             email = request.args.get('email')
@@ -214,12 +223,13 @@ class SearchUsers(Resource):
                 logger.error("User not found")
                 return {"message": "User not found"}, 404
         except Exception as e:
-            logger.error(f"Unexpected error searching users: {e}")
+            logger.error(f"Unexpected error searching users: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class DeleteUser(Resource):
     @jwt_required()
     def delete(self, user_id):
+        logger.info(f"Entered DeleteUser delete method for user_id {user_id}")
         try:
             user = User.query.filter_by(id=user_id).first()
             if user:
@@ -231,12 +241,13 @@ class DeleteUser(Resource):
                 logger.error(f"User with id {user_id} not found")
                 return {"message": "User not found"}, 404
         except Exception as e:
-            logger.error(f"Unexpected error deleting user: {e}")
+            logger.error(f"Unexpected error deleting user: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class ResetUserEmail(Resource):
     @jwt_required()
     def put(self, user_id):
+        logger.info(f"Entered ResetUserEmail put method for user_id {user_id}")
         try:
             new_email = request.json.get('new_email')
             user = User.query.filter_by(id=user_id).first()
@@ -249,12 +260,13 @@ class ResetUserEmail(Resource):
                 logger.error(f"User with id {user_id} not found")
                 return {"message": "User not found"}, 404
         except Exception as e:
-            logger.error(f"Unexpected error resetting user email: {e}")
+            logger.error(f"Unexpected error resetting user email: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class ResetUserPassword(Resource):
     @jwt_required()
     def put(self, user_id):
+        logger.info(f"Entered ResetUserPassword put method for user_id {user_id}")
         try:
             new_password = request.json.get('new_password')
             user = User.query.filter_by(id=user_id).first()
@@ -267,14 +279,16 @@ class ResetUserPassword(Resource):
                 logger.error(f"User with id {user_id} not found")
                 return {"message": "User not found"}, 404
         except Exception as e:
-            logger.error(f"Unexpected error resetting user password: {e}")
+            logger.error(f"Unexpected error resetting user password: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class PlatformUpdatesResource(Resource):
     @jwt_required()
     def post(self):
+        logger.info("Entered PlatformUpdatesResource post method")
         try:
             data = request.get_json()
+            logger.info(f"Received platform update data: {data}")
             title = data.get('title')
             content = data.get('content')
             if not title or not content:
@@ -287,12 +301,13 @@ class PlatformUpdatesResource(Resource):
             logger.info("Added platform update")
             return {"message": "Update added"}, 201
         except Exception as e:
-            logger.error(f"Unexpected error posting platform update: {e}")
+            logger.error(f"Unexpected error posting platform update: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
 class PackmanPackResource(Resource):
     @jwt_required()
     def post(self):
+        logger.info("Entered PackmanPackResource post method")
         try:
             current_user_email = get_jwt_identity()
             data = request.get_json()
@@ -327,6 +342,7 @@ class PackmanPackResource(Resource):
 
                 # Check and truncate content if necessary
                 if len(text_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                    logger.warning(f"Content length exceeds limit for entry: {content}")
                     text_content = text_content[:65535]
 
                 pack_entry = PackmanPack(
@@ -342,13 +358,14 @@ class PackmanPackResource(Resource):
             logger.info(f"Processed pack for user {current_user_email}")
             return jsonify({"message": "Pack processed successfully"}), 201
         except Exception as e:
-            logger.error(f"Unexpected error processing pack: {e}")
+            logger.error(f"Unexpected error processing pack: {e}", exc_info=True)
             return jsonify({"message": "Something went wrong"}), 500
 
 
 class PackmanListPacks(Resource):
     @jwt_required()
     def get(self):
+        logger.info("Entered PackmanListPacks get method")
         try:
             current_user_email = get_jwt_identity()
             user = User.query.filter_by(email=current_user_email).first()
@@ -376,7 +393,7 @@ class PackmanListPacks(Resource):
             logger.info(f"Fetched packs for user {current_user_email}")
             return jsonify(pack_list)
         except Exception as e:
-            logger.error(f"Unexpected error listing packs: {e}")
+            logger.error(f"Unexpected error listing packs: {e}", exc_info=True)
             return jsonify({"message": "Something went wrong"}), 500
 
 # Register API resources
@@ -401,13 +418,13 @@ def resource_not_found(e):
 # Error handler for 500 Internal Server Error
 @app.errorhandler(500)
 def internal_server_error(e):
-    logger.error(f"Internal server error: {e}")
+    logger.error(f"Internal server error: {e}", exc_info=True)
     return jsonify({"message": "Internal server error"}), 500
 
 # Error handler for SQLAlchemy errors
 @app.errorhandler(SQLAlchemyError)
 def handle_sqlalchemy_error(e):
-    logger.error(f"Database error: {e}")
+    logger.error(f"Database error: {e}", exc_info=True)
     db.session.rollback()
     return jsonify({"message": "Database error"}), 500
 
