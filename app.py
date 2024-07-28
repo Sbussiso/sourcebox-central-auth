@@ -52,21 +52,10 @@ class Packman(db.Model):
 
 class PackmanPack(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    pack_name = db.Column(db.String(150), nullable=False)
     packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
-    web_data = db.relationship('PackmanWebData', backref='pack', lazy=True)
-    files = db.relationship('PackmanUserFile', backref='pack', lazy=True)
-
-class PackmanWebData(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    pack_id = db.Column(db.Integer, db.ForeignKey('packman_pack.id'), nullable=False)
-
-class PackmanUserFile(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(255), nullable=False)
-    filepath = db.Column(db.String(255), nullable=False)
-    pack_id = db.Column(db.Integer, db.ForeignKey('packman_pack.id'), nullable=False)
+    data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
+    filename = db.Column(db.String(255), nullable=True)
 
 class UserRegistration(Resource):
     def post(self):
@@ -328,11 +317,12 @@ class PackmanWebPack(Resource):
                 if len(content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
                     content = content[:65535]
 
-                web_data_entry = PackmanWebData(
+                pack_entry = PackmanPack(
+                    packman_id=packman_entry.id,
                     content=content,
-                    pack_id=packman_entry.id
+                    data_type='link'
                 )
-                db.session.add(web_data_entry)
+                db.session.add(pack_entry)
             db.session.commit()
 
             logger.info(f"Processed web pack for user {current_user_email}")
@@ -365,12 +355,16 @@ class PackmanFilePack(Resource):
             db.session.add(packman_entry)
             db.session.commit()
 
-            file_data_entry = PackmanUserFile(
-                filename=filename,
-                filepath=filepath,
-                pack_id=packman_entry.id
+            with open(filepath, 'r') as file:
+                content = file.read()
+
+            pack_entry = PackmanPack(
+                packman_id=packman_entry.id,
+                content=content,
+                data_type='file',
+                filename=filename
             )
-            db.session.add(file_data_entry)
+            db.session.add(pack_entry)
             db.session.commit()
 
             logger.info(f"Processed file pack for user {current_user_email}")
@@ -378,7 +372,6 @@ class PackmanFilePack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error processing file pack: {e}")
             return {"message": "Something went wrong"}, 500
-
 
 class PackmanListPacks(Resource):
     @jwt_required()
@@ -396,20 +389,14 @@ class PackmanListPacks(Resource):
                 pack_data = {
                     "id": pack.id,
                     "pack_name": pack.pack_name,
-                    "links": [],
-                    "files": []
+                    "contents": []
                 }
                 for pack_item in pack.packs:
-                    web_data = PackmanWebData.query.filter_by(pack_id=pack_item.id).all()
-                    file_data = PackmanUserFile.query.filter_by(pack_id=pack_item.id).all()
-
-                    for web in web_data:
-                        pack_data["links"].append(web.content)
-                    for file in file_data:
-                        pack_data["files"].append({
-                            "filename": file.filename,
-                            "filepath": file.filepath
-                        })
+                    pack_data["contents"].append({
+                        "content": pack_item.content,
+                        "data_type": pack_item.data_type,
+                        "filename": pack_item.filename
+                    })
 
                 pack_list.append(pack_data)
 
@@ -418,7 +405,6 @@ class PackmanListPacks(Resource):
         except Exception as e:
             logger.error(f"Unexpected error listing packs: {e}")
             return jsonify({"message": "Something went wrong"}), 500
-
 
 # Register API resources
 api.add_resource(UserRegistration, '/register')
