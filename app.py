@@ -424,6 +424,32 @@ class PackmanListPacks(Resource):
             logger.error(f"Unexpected error listing packs: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+class DeletePack(Resource):
+    @jwt_required()
+    def delete(self, pack_id):
+        logger.info(f"Entered DeletePack delete method for pack_id {pack_id}")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            pack = Packman.query.filter_by(id=pack_id, user_id=user.id).first()
+            if not pack:
+                logger.error(f"Pack with id {pack_id} not found for user {current_user_email}")
+                return {"message": "Pack not found"}, 404
+
+            db.session.delete(pack)
+            db.session.commit()
+            logger.info(f"Deleted pack with id {pack_id} for user {current_user_email}")
+            return {"message": "Pack deleted successfully"}, 200
+        except Exception as e:
+            logger.error(f"Unexpected error deleting pack: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
 # Register API resources
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
@@ -436,6 +462,7 @@ api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
 api.add_resource(PackmanPackResource, '/packman/pack')
 api.add_resource(PackmanListPacks, '/packman/list_packs')
+api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
