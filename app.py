@@ -441,6 +441,10 @@ class DeletePack(Resource):
                 logger.error(f"Pack with id {pack_id} not found for user {current_user_email}")
                 return {"message": "Pack not found"}, 404
 
+            # Delete associated PackmanPack entries
+            PackmanPack.query.filter_by(packman_id=pack.id).delete()
+            
+            # Delete the Packman entry
             db.session.delete(pack)
             db.session.commit()
             logger.info(f"Deleted pack with id {pack_id} for user {current_user_email}")
@@ -448,6 +452,7 @@ class DeletePack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error deleting pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 
 # Register API resources
