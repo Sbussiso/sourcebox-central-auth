@@ -411,7 +411,12 @@ class PackmanListPacks(Resource):
                 return {"message": "User not found"}, 404
 
             packs = Packman.query.filter_by(user_id=user.id).all()
-            pack_list = packmans_schema.dump(packs)
+            pack_list = []
+            for pack in packs:
+                pack_data = packman_schema.dump(pack)
+                pack_contents = PackmanPack.query.filter_by(packman_id=pack.id).all()
+                pack_data['contents'] = packman_packs_schema.dump(pack_contents)
+                pack_list.append(pack_data)
 
             logger.info(f"Fetched packs for user {current_user_email}")
             return jsonify(pack_list)
