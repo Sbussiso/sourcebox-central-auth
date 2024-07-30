@@ -492,7 +492,7 @@ api.add_resource(ResetUserPassword, '/users/<int:user_id>/password')
 api.add_resource(PlatformUpdatesResource, '/platform_updates')
 api.add_resource(PackmanPackResource, '/packman/pack')
 api.add_resource(PackmanListPacks, '/packman/list_packs')
-api.add_resource(GetPackById, '/packman/pack/<int:pack_id>')
+api.add_resource(GetPackById, '/packman/pack/details/<int:pack_id>')  # Updated route
 api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
 
 # Error handler for 404 Not Found
@@ -519,4 +519,3 @@ if __name__ == '__main__':
         db.create_all()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
