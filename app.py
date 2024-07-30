@@ -419,9 +419,13 @@ class GetPackById(Resource):
 
             logger.info(f"Fetched pack with id {pack_id} for user {current_user_email}")
             return jsonify(pack_data)
+        except jwt.exceptions.DecodeError as e:
+            logger.error("JWT DecodeError: Not enough segments")
+            return {"message": "Invalid token format"}, 400
         except Exception as e:
             logger.error(f"Unexpected error fetching pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 class PackmanListPacks(Resource):
     @jwt_required()
