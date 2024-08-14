@@ -441,16 +441,15 @@ class PackmanPackResource(Resource):
 
 
 
-
 class PackmanCodePackResource(Resource):
     @jwt_required()
     def post(self):
         logger.info("Entered PackmanCodePackResource post method")
         try:
             current_user_email = get_jwt_identity()
-            data = request.get_json()
+            logger.info(f"Authenticated user: {current_user_email}")
             
-            # Log the received data
+            data = request.get_json()
             logger.info(f"Received data: {data}")
             
             pack_name = data.get('pack_name')
@@ -465,7 +464,7 @@ class PackmanCodePackResource(Resource):
                 logger.error(f"User with email {current_user_email} not found")
                 return {"message": "User not found"}, 404
 
-            # Create the PackmanCode entry
+            logger.info(f"Creating PackmanCode entry for user {current_user_email}")
             packman_code_entry = PackmanCode(user_id=user.id, pack_name=pack_name)
             db.session.add(packman_code_entry)
             db.session.commit()
@@ -479,13 +478,13 @@ class PackmanCodePackResource(Resource):
                     logger.error("Data type and content are required for each entry")
                     return {"message": "Data type and content are required for each entry"}, 400
 
-                # Check and truncate content if necessary
                 if len(text_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
                     logger.warning(f"Content length exceeds limit for entry: {content}")
                     text_content = text_content[:65535]
 
+                logger.info(f"Adding PackmanCodePack entry: {filename}")
                 pack_entry = PackmanCodePack(
-                    packman_code_id=packman_code_entry.id,  # Link to the correct PackmanCode
+                    packman_code_id=packman_code_entry.id,
                     content=text_content,
                     data_type=data_type,
                     filename=filename
@@ -493,12 +492,12 @@ class PackmanCodePackResource(Resource):
                 db.session.add(pack_entry)
 
             db.session.commit()
-
             logger.info(f"Processed code pack for user {current_user_email}")
             return packman_code_schema.dump(packman_code_entry), 201
         except Exception as e:
             logger.error(f"Unexpected error processing code pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 
 
@@ -600,6 +599,8 @@ api.add_resource(PackmanPackResource, '/packman/pack')
 api.add_resource(PackmanListPacks, '/packman/list_packs')
 api.add_resource(GetPackById, '/packman/pack/details/<int:pack_id>')  # Updated route
 api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
+api.add_resource(PackmanCodePackResource, '/packman/code_pack')
+
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
