@@ -33,6 +33,7 @@ class User(db.Model):
     premium_status = db.Column(db.Boolean, default=False)
     history = db.relationship('UserHistory', backref='user', lazy=True)
     packs = db.relationship('Packman', backref='user', lazy=True)
+    code_packs = db.relationship('PackmanCode', backref='user', lazy=True)
 
 class UserHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
