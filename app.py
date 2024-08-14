@@ -58,6 +58,25 @@ class PackmanPack(db.Model):
     data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
     filename = db.Column(db.String(255), nullable=True)
 
+
+class PackmanCode(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    pack_name = db.Column(db.String(150), nullable=False)
+    packs = db.relationship('PackmanCodePack', backref='packmancode', lazy=True)
+
+class PackmanCodePack(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    packman_code_id = db.Column(db.Integer, db.ForeignKey('packman_code.id'), nullable=False)  # Use the correct foreign key name
+    content = db.Column(db.Text, nullable=False)
+    data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
+    filename = db.Column(db.String(255), nullable=True)
+
+
+
+
+
+
 class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
@@ -88,16 +107,39 @@ class PackmanPackSchema(SQLAlchemyAutoSchema):
         include_relationships = True
         load_instance = True
 
+#packman code schema
+class PackmanCodeSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = PackmanCode
+        include_relationships = True
+        load_instance = True
+
+class PackmanCodePackSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = PackmanCodePack
+        include_relationships = True
+        load_instance = True
+
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
+
 user_history_schema = UserHistorySchema()
 user_histories_schema = UserHistorySchema(many=True)
+
 platform_update_schema = PlatformUpdatesSchema()
 platform_updates_schema = PlatformUpdatesSchema(many=True)
+
 packman_schema = PackmanSchema()
 packmans_schema = PackmanSchema(many=True)
+
 packman_pack_schema = PackmanPackSchema()
 packman_packs_schema = PackmanPackSchema(many=True)
+
+packman_code_schema = PackmanSchema()
+packmans_code_schema = PackmanSchema(many=True)
+
+packman_code_pack_schema = PackmanCodePackSchema()
+packman_code_packs_schema = PackmanCodePackSchema(many=True)
 
 class UserRegistration(Resource):
     def post(self):
@@ -397,6 +439,71 @@ class PackmanPackResource(Resource):
             logger.error(f"Unexpected error processing pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+
+
+class PackmanCodePackResource(Resource):
+    @jwt_required()
+    def post(self):
+        logger.info("Entered PackmanCodePackResource post method")
+        try:
+            current_user_email = get_jwt_identity()
+            data = request.get_json()
+            
+            # Log the received data
+            logger.info(f"Received data: {data}")
+            
+            pack_name = data.get('pack_name')
+            contents = data.get('contents')
+
+            if not pack_name or not contents:
+                logger.error("Pack name and contents are required")
+                return {"message": "Pack name and contents are required"}, 400
+
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            # Create the PackmanCode entry
+            packman_code_entry = PackmanCode(user_id=user.id, pack_name=pack_name)
+            db.session.add(packman_code_entry)
+            db.session.commit()
+
+            for content in contents:
+                data_type = content.get('data_type')
+                text_content = content.get('content')
+                filename = content.get('filename')
+
+                if not data_type or not text_content:
+                    logger.error("Data type and content are required for each entry")
+                    return {"message": "Data type and content are required for each entry"}, 400
+
+                # Check and truncate content if necessary
+                if len(text_content) > 65535:  # Assuming MySQL TEXT type limit, adjust as needed
+                    logger.warning(f"Content length exceeds limit for entry: {content}")
+                    text_content = text_content[:65535]
+
+                pack_entry = PackmanCodePack(
+                    packman_code_id=packman_code_entry.id,  # Link to the correct PackmanCode
+                    content=text_content,
+                    data_type=data_type,
+                    filename=filename
+                )
+                db.session.add(pack_entry)
+
+            db.session.commit()
+
+            logger.info(f"Processed code pack for user {current_user_email}")
+            return packman_code_schema.dump(packman_code_entry), 201
+        except Exception as e:
+            logger.error(f"Unexpected error processing code pack: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+
+
+
 class GetPackById(Resource):
     @jwt_required()
     def get(self, pack_id):
@@ -425,7 +532,6 @@ class GetPackById(Resource):
         except Exception as e:
             logger.error(f"Unexpected error fetching pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
-
 
 class PackmanListPacks(Resource):
     @jwt_required()
