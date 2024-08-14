@@ -606,6 +606,36 @@ class DeletePack(Resource):
             logger.error(f"Unexpected error deleting pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+class DeleteCodePack(Resource):
+    @jwt_required()
+    def delete(self, pack_id):
+        logger.info(f"Entered DeleteCodePack delete method for pack_id {pack_id}")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            code_pack = PackmanCode.query.filter_by(id=pack_id, user_id=user.id).first()
+            if not code_pack:
+                logger.error(f"Code pack with id {pack_id} not found for user {current_user_email}")
+                return {"message": "Code pack not found"}, 404
+
+            # Delete associated PackmanCodePack entries
+            PackmanCodePack.query.filter_by(packman_code_id=code_pack.id).delete()
+            
+            # Delete the PackmanCode entry
+            db.session.delete(code_pack)
+            db.session.commit()
+            logger.info(f"Deleted code pack with id {pack_id} for user {current_user_email}")
+            return {"message": "Code pack deleted successfully"}, 200
+        except Exception as e:
+            logger.error(f"Unexpected error deleting code pack: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
 # Register API resources
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
@@ -622,6 +652,8 @@ api.add_resource(GetPackById, '/packman/pack/details/<int:pack_id>')  # Updated 
 api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
 api.add_resource(PackmanCodePackResource, '/packman/code_pack')
 api.add_resource(PackmanListCodePacks, '/packman/code/list_code_packs')
+api.add_resource(DeleteCodePack, '/packman/code_pack/<int:pack_id>')
+
 
 
 
