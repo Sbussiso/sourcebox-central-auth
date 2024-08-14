@@ -439,8 +439,6 @@ class PackmanPackResource(Resource):
             logger.error(f"Unexpected error processing pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
-
 class PackmanCodePackResource(Resource):
     @jwt_required()
     def post(self):
@@ -498,11 +496,6 @@ class PackmanCodePackResource(Resource):
             logger.error(f"Unexpected error processing code pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
-
-
-
-
 class GetPackById(Resource):
     @jwt_required()
     def get(self, pack_id):
@@ -557,6 +550,34 @@ class PackmanListPacks(Resource):
             logger.error(f"Unexpected error listing packs: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+class PackmanListCodePacks(Resource):
+    @jwt_required()
+    def get(self):
+        logger.info("Entered PackmanListCodePacks get method")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            code_packs = PackmanCode.query.filter_by(user_id=user.id).all()
+            code_pack_list = []
+            for code_pack in code_packs:
+                code_pack_data = packman_code_schema.dump(code_pack)
+                code_pack_contents = PackmanCodePack.query.filter_by(packman_code_id=code_pack.id).all()
+                code_pack_data['contents'] = packman_code_packs_schema.dump(code_pack_contents)
+                code_pack_list.append(code_pack_data)
+
+            logger.info(f"Fetched code packs for user {current_user_email}")
+            return jsonify(code_pack_list)
+        except Exception as e:
+            logger.error(f"Unexpected error listing code packs: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+
 class DeletePack(Resource):
     @jwt_required()
     def delete(self, pack_id):
@@ -600,6 +621,9 @@ api.add_resource(PackmanListPacks, '/packman/list_packs')
 api.add_resource(GetPackById, '/packman/pack/details/<int:pack_id>')  # Updated route
 api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
 api.add_resource(PackmanCodePackResource, '/packman/code_pack')
+api.add_resource(PackmanListCodePacks, '/packman/code/list_code_packs')
+
+
 
 
 # Error handler for 404 Not Found
