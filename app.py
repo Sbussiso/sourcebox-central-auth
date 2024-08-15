@@ -563,10 +563,16 @@ class PackmanListCodePacks(Resource):
                 logger.error(f"User with email {current_user_email} not found")
                 return {"message": "User not found"}, 404
 
+            logger.info(f"User ID: {user.id}")
             code_packs = PackmanCode.query.filter_by(user_id=user.id).all()
+            if not code_packs:
+                logger.info(f"No code packs found for user {current_user_email}")
+                return {"message": "No code packs found"}, 404
+
             code_pack_list = []
             for code_pack in code_packs:
                 code_pack_data = packman_code_schema.dump(code_pack)
+                logger.info(f"PackmanCode data: {code_pack_data}")
                 code_pack_contents = PackmanCodePack.query.filter_by(packman_code_id=code_pack.id).all()
                 code_pack_data['contents'] = packman_code_packs_schema.dump(code_pack_contents)
                 code_pack_list.append(code_pack_data)
@@ -576,6 +582,7 @@ class PackmanListCodePacks(Resource):
         except Exception as e:
             logger.error(f"Unexpected error listing code packs: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 
 
