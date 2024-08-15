@@ -526,6 +526,44 @@ class GetPackById(Resource):
             logger.error(f"Unexpected error fetching pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+
+class GetCodePackById(Resource):
+    @jwt_required()
+    def get(self, pack_id):
+        logger.info(f"Entered GetCodePackById get method for code_pack_id {pack_id}")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+
+            # Fetch the PackmanCode entry for the user
+            code_pack = PackmanCode.query.filter_by(id=pack_id, user_id=user.id).first()
+            if not code_pack:
+                logger.error(f"Code pack with id {pack_id} not found for user {current_user_email}")
+                return {"message": "Code pack not found"}, 404
+
+            # Serialize the code pack data
+            code_pack_data = packman_code_schema.dump(code_pack)
+
+            # Fetch all associated PackmanCodePack entries
+            code_pack_contents = PackmanCodePack.query.filter_by(packman_code_id=code_pack.id).all()
+            code_pack_data['contents'] = packman_code_packs_schema.dump(code_pack_contents)
+
+            logger.info(f"Fetched code pack with id {pack_id} for user {current_user_email}")
+            return jsonify(code_pack_data)
+        except jwt.exceptions.DecodeError as e:
+            logger.error("JWT DecodeError: Not enough segments")
+            return {"message": "Invalid token format"}, 400
+        except Exception as e:
+            logger.error(f"Unexpected error fetching code pack: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+
+
 class PackmanListPacks(Resource):
     @jwt_required()
     def get(self):
@@ -660,6 +698,7 @@ api.add_resource(GetPackById, '/packman/pack/details/<int:pack_id>')  # Updated 
 api.add_resource(DeletePack, '/packman/pack/<int:pack_id>')
 api.add_resource(PackmanCodePackResource, '/packman/code_pack')
 api.add_resource(PackmanListCodePacks, '/packman/code/list_code_packs')
+api.add_resource(GetCodePackById, '/packman/code/details/<int:pack_id>')
 api.add_resource(DeleteCodePack, '/packman/code_pack/<int:pack_id>')
 
 
