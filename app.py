@@ -682,6 +682,21 @@ class DeleteCodePack(Resource):
             return {"message": "Something went wrong"}, 500
 
 
+class GetUserID(Resource):
+    @jwt_required()
+    def get(self):
+        # Get the current user's email from the JWT token
+        current_user_email = get_jwt_identity()
+
+        # Query the database for the user object using the email
+        user = User.query.filter_by(email=current_user_email).first()
+
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        # Return the user's ID
+        return jsonify({"user_id": user.id})
+
 # Register API resources
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
@@ -700,8 +715,7 @@ api.add_resource(PackmanCodePackResource, '/packman/code_pack')
 api.add_resource(PackmanListCodePacks, '/packman/code/list_code_packs')
 api.add_resource(GetCodePackById, '/packman/code/details/<int:pack_id>')
 api.add_resource(DeleteCodePack, '/packman/code_pack/<int:pack_id>')
-
-
+api.add_resource(GetUserID, '/user/id')
 
 
 
@@ -723,6 +737,8 @@ def handle_sqlalchemy_error(e):
     logger.error(f"Database error: {e}", exc_info=True)
     db.session.rollback()
     return jsonify({"message": "Database error"}), 500
+
+
 
 if __name__ == '__main__':
     with app.app_context():
