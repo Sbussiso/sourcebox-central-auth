@@ -693,27 +693,47 @@ class AddTokens(Resource):
     @jwt_required()
     def post(self):
         current_user_email = get_jwt_identity()  # Get the current user from JWT token
-        data = request.get_json()  # Expect JSON with the number of tokens to add
+        logger.info(f"AddTokens called by user: {current_user_email}")  # Log the call
+
+        # Extract JSON payload and log it
+        data = request.get_json()
+        logger.info(f"Received payload: {data}")
 
         try:
+            # Get the number of tokens to add, default to 0 if not provided
             tokens_to_add = data.get('tokens', 0)
+            logger.info(f"Tokens to add: {tokens_to_add}")
+
+            # Validate the token count
             if tokens_to_add <= 0:
+                logger.error("Invalid token amount. Must be greater than 0.")
                 return {"message": "Invalid token amount. Must be greater than 0."}, 400
 
+            # Query the user from the database using their email
             user = User.query.filter_by(email=current_user_email).first()
             if not user:
+                logger.error(f"User not found: {current_user_email}")
                 return {"message": "User not found"}, 404
 
-            # Increment the user's token usage
+            # Increment the user's token usage and log the action
+            logger.info(f"Current token usage for user {current_user_email}: {user.token_usage}")
             user.token_usage += tokens_to_add
-            db.session.commit()
+            logger.info(f"New token usage for user {current_user_email}: {user.token_usage}")
 
-            logger.info(f"Added {tokens_to_add} tokens for user {current_user_email}")
+            # Commit the changes to the database
+            db.session.commit()
+            logger.info(f"Successfully added {tokens_to_add} tokens for user {current_user_email}")
+
+            # Return the success response
             return {"message": f"Successfully added {tokens_to_add} tokens.", "total_tokens": user.token_usage}, 200
+
         except Exception as e:
+            # Rollback in case of an error and log the error details
             db.session.rollback()
-            logger.error(f"Error adding tokens: {e}", exc_info=True)
+            logger.error(f"Error adding tokens for user {current_user_email}: {e}", exc_info=True)
             return {"message": "Something went wrong while adding tokens."}, 500
+
+
 
 
 
