@@ -31,9 +31,11 @@ class User(db.Model):
     password = db.Column(db.String(150), nullable=False)
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
+    token_usage = db.Column(db.Integer, default=0)  # New field to track tokens used
     history = db.relationship('UserHistory', backref='user', lazy=True)
     packs = db.relationship('Packman', backref='user', lazy=True)
     code_packs = db.relationship('PackmanCode', backref='user', lazy=True)
+
 
 class UserHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -526,8 +528,6 @@ class GetPackById(Resource):
             logger.error(f"Unexpected error fetching pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
-
 class GetCodePackById(Resource):
     @jwt_required()
     def get(self, pack_id):
@@ -561,9 +561,6 @@ class GetCodePackById(Resource):
             logger.error(f"Unexpected error fetching code pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
-
-
 class PackmanListPacks(Resource):
     @jwt_required()
     def get(self):
@@ -588,7 +585,6 @@ class PackmanListPacks(Resource):
         except Exception as e:
             logger.error(f"Unexpected error listing packs: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
-
 
 class PackmanListCodePacks(Resource):
     @jwt_required()
@@ -621,9 +617,6 @@ class PackmanListCodePacks(Resource):
             logger.error(f"Unexpected error listing code packs: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
-
-
 class DeletePack(Resource):
     @jwt_required()
     def delete(self, pack_id):
@@ -651,7 +644,6 @@ class DeletePack(Resource):
         except Exception as e:
             logger.error(f"Unexpected error deleting pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
-
 
 class DeleteCodePack(Resource):
     @jwt_required()
@@ -681,7 +673,6 @@ class DeleteCodePack(Resource):
             logger.error(f"Unexpected error deleting code pack: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
-
 class GetUserID(Resource):
     @jwt_required()
     def get(self):
@@ -696,6 +687,54 @@ class GetUserID(Resource):
         
         # Return the user's ID
         return jsonify({"user_id": user.id})
+
+
+class AddTokens(Resource):
+    @jwt_required()
+    def post(self):
+        current_user_email = get_jwt_identity()  # Get the current user from JWT token
+        data = request.get_json()  # Expect JSON with the number of tokens to add
+
+        try:
+            tokens_to_add = data.get('tokens', 0)
+            if tokens_to_add <= 0:
+                return {"message": "Invalid token amount. Must be greater than 0."}, 400
+
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                return {"message": "User not found"}, 404
+
+            # Increment the user's token usage
+            user.token_usage += tokens_to_add
+            db.session.commit()
+
+            logger.info(f"Added {tokens_to_add} tokens for user {current_user_email}")
+            return {"message": f"Successfully added {tokens_to_add} tokens.", "total_tokens": user.token_usage}, 200
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error adding tokens: {e}", exc_info=True)
+            return {"message": "Something went wrong while adding tokens."}, 500
+
+
+
+class GetTokenUsage(Resource):
+    @jwt_required()
+    def get(self):
+        current_user_email = get_jwt_identity()  # Get the current user from JWT token
+
+        try:
+            user = User.query.filter_by(email=current_user_email).first()
+            if not user:
+                return {"message": "User not found"}, 404
+
+            logger.info(f"Fetched token usage for user {current_user_email}")
+            return {"total_tokens": user.token_usage}, 200
+        except Exception as e:
+            logger.error(f"Error fetching token usage: {e}", exc_info=True)
+            return {"message": "Something went wrong while fetching token usage."}, 500
+
+
+
 
 # Register API resources
 api.add_resource(UserRegistration, '/register')
@@ -716,6 +755,8 @@ api.add_resource(PackmanListCodePacks, '/packman/code/list_code_packs')
 api.add_resource(GetCodePackById, '/packman/code/details/<int:pack_id>')
 api.add_resource(DeleteCodePack, '/packman/code_pack/<int:pack_id>')
 api.add_resource(GetUserID, '/user/id')
+api.add_resource(AddTokens, '/user/add_tokens')   # POST to add tokens
+api.add_resource(GetTokenUsage, '/user/token_usage')  # GET to fetch user's total token usage
 
 
 
