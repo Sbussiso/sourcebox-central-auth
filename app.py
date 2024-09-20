@@ -264,6 +264,38 @@ class RecordUserHistory(Resource):
             logger.error(f"Unexpected error fetching user history: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
 
+
+class FetchUserHistoryByAdmin(Resource):
+    @jwt_required()
+    def get(self, user_id):
+        logger.info(f"Admin attempting to fetch history for user ID: {user_id}")
+        try:
+            # Only allow admins to access this endpoint (assuming you have an admin check in place)
+            current_user_email = get_jwt_identity()
+            current_user = User.query.filter_by(email=current_user_email).first()
+
+            if not current_user.is_admin:
+                logger.error(f"User {current_user_email} attempted to access admin-only endpoint")
+                return {"message": "Admin access required"}, 403
+            
+            # Fetch the user by the provided user_id
+            user = User.query.get(user_id)
+            if not user:
+                logger.error(f"User with ID {user_id} not found")
+                return {"message": "User not found"}, 404
+
+            # Fetch the user's history
+            history_items = UserHistory.query.filter_by(user_id=user.id).all()
+            history_data = user_histories_schema.dump(history_items)
+
+            logger.info(f"Fetched history for user ID {user_id}")
+            return jsonify(history_data)
+
+        except Exception as e:
+            logger.error(f"Unexpected error fetching user history: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
 class ListUsers(Resource):
     @jwt_required()
     def get(self):
@@ -777,6 +809,7 @@ api.add_resource(DeleteCodePack, '/packman/code_pack/<int:pack_id>')
 api.add_resource(GetUserID, '/user/id')
 api.add_resource(AddTokens, '/user/add_tokens')   # POST to add tokens
 api.add_resource(GetTokenUsage, '/user/token_usage')  # GET to fetch user's total token usage
+api.add_resource(FetchUserHistoryByAdmin, '/admin/users/<int:user_id>/history')
 
 
 
