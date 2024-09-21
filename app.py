@@ -268,16 +268,11 @@ class RecordUserHistory(Resource):
 class FetchUserHistoryByAdmin(Resource):
     @jwt_required()
     def get(self, user_id):
-        logger.info(f"Admin attempting to fetch history for user ID: {user_id}")
+        logger.info(f"Attempting to fetch history for user ID: {user_id}")
         try:
-            # Only allow admins to access this endpoint (assuming you have an admin check in place)
+            # Get the current user from the token
             current_user_email = get_jwt_identity()
-            current_user = User.query.filter_by(email=current_user_email).first()
 
-            if not current_user.is_admin:
-                logger.error(f"User {current_user_email} attempted to access admin-only endpoint")
-                return {"message": "Admin access required"}, 403
-            
             # Fetch the user by the provided user_id
             user = User.query.get(user_id)
             if not user:
@@ -294,6 +289,7 @@ class FetchUserHistoryByAdmin(Resource):
         except Exception as e:
             logger.error(f"Unexpected error fetching user history: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 
 class ListUsers(Resource):
