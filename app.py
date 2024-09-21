@@ -788,6 +788,66 @@ class GetTokenUsage(Resource):
 
 
 
+class GivePremiumStatus(Resource):
+    @jwt_required()
+    def put(self):
+        logger.info("Entered GivePremiumStatus put method")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if user:
+                user.premium_status = True
+                db.session.commit()
+                logger.info(f"User {user.email} is now a premium user")
+                return {"message": "Premium status granted"}, 200
+            else:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            logger.error(f"Unexpected error giving premium status: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+class RemovePremiumStatus(Resource):
+    @jwt_required()
+    def put(self):
+        logger.info("Entered RemovePremiumStatus put method")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if user:
+                user.premium_status = False
+                db.session.commit()
+                logger.info(f"User {user.email} premium status removed")
+                return {"message": "Premium status removed"}, 200
+            else:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            logger.error(f"Unexpected error removing premium status: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+class CheckPremiumStatus(Resource):
+    @jwt_required()
+    def get(self):
+        logger.info("Entered CheckPremiumStatus get method")
+        try:
+            current_user_email = get_jwt_identity()
+            user = User.query.filter_by(email=current_user_email).first()
+            if user:
+                logger.info(f"User {user.email} premium status is {user.premium_status}")
+                return {"premium_status": user.premium_status}, 200
+            else:
+                logger.error(f"User with email {current_user_email} not found")
+                return {"message": "User not found"}, 404
+        except Exception as e:
+            logger.error(f"Unexpected error checking premium status: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+
+
+
+
 # Register API resources
 api.add_resource(UserRegistration, '/register')
 api.add_resource(UserLogin, '/login')
@@ -810,6 +870,12 @@ api.add_resource(GetUserID, '/user/id')
 api.add_resource(AddTokens, '/user/add_tokens')   # POST to add tokens
 api.add_resource(GetTokenUsage, '/user/token_usage')  # GET to fetch user's total token usage
 api.add_resource(FetchUserHistoryByAdmin, '/admin/users/<int:user_id>/history')
+
+# Register premium status-related resources
+api.add_resource(GivePremiumStatus, '/user/premium/grant')
+api.add_resource(RemovePremiumStatus, '/user/premium/remove')
+api.add_resource(CheckPremiumStatus, '/user/premium/status')
+
 
 
 
