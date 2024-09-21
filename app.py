@@ -31,18 +31,20 @@ class User(db.Model):
     password = db.Column(db.String(150), nullable=False)
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
-    token_usage = db.Column(db.Integer, default=0)  # New field to track tokens used
-    history = db.relationship('UserHistory', backref='user', lazy=True)
+    token_usage = db.Column(db.Integer, default=0)
+    history = db.relationship('UserHistory', backref='user', lazy=True, cascade="all, delete-orphan")
     packs = db.relationship('Packman', backref='user', lazy=True, cascade="all, delete-orphan")
     code_packs = db.relationship('PackmanCode', backref='user', lazy=True, cascade="all, delete-orphan")
 
 
 
+
 class UserHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     action = db.Column(db.String(150))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+
 
 class PlatformUpdates(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -51,30 +53,30 @@ class PlatformUpdates(db.Model):
 
 class Packman(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     pack_name = db.Column(db.String(150), nullable=False)
-    packs = db.relationship('PackmanPack', backref='packman', lazy=True)
+    packs = db.relationship('PackmanPack', backref='packman', lazy=True, cascade="all, delete-orphan")
 
 class PackmanPack(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id'), nullable=False)
+    packman_id = db.Column(db.Integer, db.ForeignKey('packman.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
+    data_type = db.Column(db.String(50), nullable=False)
     filename = db.Column(db.String(255), nullable=True)
-
 
 class PackmanCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     pack_name = db.Column(db.String(150), nullable=False)
-    packs = db.relationship('PackmanCodePack', backref='packmancode', lazy=True)
+    packs = db.relationship('PackmanCodePack', backref='packmancode', lazy=True, cascade="all, delete-orphan")
 
 class PackmanCodePack(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    packman_code_id = db.Column(db.Integer, db.ForeignKey('packman_code.id'), nullable=False)  # Use the correct foreign key name
+    packman_code_id = db.Column(db.Integer, db.ForeignKey('packman_code.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    data_type = db.Column(db.String(50), nullable=False)  # "link" or "file"
+    data_type = db.Column(db.String(50), nullable=False)
     filename = db.Column(db.String(255), nullable=True)
+
 
 
 
@@ -353,6 +355,7 @@ class DeleteUser(Resource):
         except Exception as e:
             logger.error(f"Unexpected error deleting user: {e}", exc_info=True)
             return {"message": "Something went wrong"}, 500
+
 
 class ResetUserEmail(Resource):
     @jwt_required()
