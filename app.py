@@ -33,8 +33,9 @@ class User(db.Model):
     premium_status = db.Column(db.Boolean, default=False)
     token_usage = db.Column(db.Integer, default=0)  # New field to track tokens used
     history = db.relationship('UserHistory', backref='user', lazy=True)
-    packs = db.relationship('Packman', backref='user', lazy=True)
-    code_packs = db.relationship('PackmanCode', backref='user', lazy=True)
+    packs = db.relationship('Packman', backref='user', lazy=True, cascade="all, delete-orphan")
+    code_packs = db.relationship('PackmanCode', backref='user', lazy=True, cascade="all, delete-orphan")
+
 
 
 class UserHistory(db.Model):
