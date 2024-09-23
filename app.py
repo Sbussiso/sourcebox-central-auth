@@ -869,7 +869,7 @@ class SetStripeSubscriptionID(Resource):
     def put(self, user_id):
         logger.info(f"Entered SetStripeSubscriptionID put method for user_id {user_id}")
         try:
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)  # Updated to SQLAlchemy 2.0 syntax
             if not user:
                 logger.error(f"User with ID {user_id} not found")
                 return {"message": "User not found"}, 404
