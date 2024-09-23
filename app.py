@@ -843,7 +843,23 @@ class CheckPremiumStatus(Resource):
             return {"message": "Something went wrong"}, 500
 
 
+class GrantPremiumByEmail(Resource):
+    def put(self):
+        # Get the email from the request data
+        email = request.json.get('email')
+        if not email:
+            return {"message": "Email is required"}, 400
 
+        # Find the user by email
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            # Grant premium status
+            user.premium_status = True
+            db.session.commit()
+            return {"message": "Premium status granted"}, 200
+        else:
+            return {"message": "User not found"}, 404
 
 
 
@@ -875,6 +891,7 @@ api.add_resource(FetchUserHistoryByAdmin, '/admin/users/<int:user_id>/history')
 api.add_resource(GivePremiumStatus, '/user/<int:user_id>/premium/grant')
 api.add_resource(RemovePremiumStatus, '/user/<int:user_id>/premium/remove')
 api.add_resource(CheckPremiumStatus, '/user/<int:user_id>/premium/status')
+api.add_resource(GrantPremiumByEmail, '/user/premium/grant_by_email')
 
 
 
