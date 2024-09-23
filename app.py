@@ -9,6 +9,7 @@ from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 import os
 from datetime import datetime, timedelta
 import logging
+import stripe
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your_jwt_secret_key')
@@ -32,9 +33,11 @@ class User(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     premium_status = db.Column(db.Boolean, default=False)
     token_usage = db.Column(db.Integer, default=0)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)  # Add Stripe subscription ID field
     history = db.relationship('UserHistory', backref='user', lazy=True, cascade="all, delete-orphan")
     packs = db.relationship('Packman', backref='user', lazy=True, cascade="all, delete-orphan")
     code_packs = db.relationship('PackmanCode', backref='user', lazy=True, cascade="all, delete-orphan")
+
 
 
 
@@ -862,6 +865,72 @@ class GrantPremiumByEmail(Resource):
             return {"message": "User not found"}, 404
 
 
+class SetStripeSubscriptionID(Resource):
+    @jwt_required()
+    def put(self, user_id):
+        logger.info(f"Entered SetStripeSubscriptionID put method for user_id {user_id}")
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                logger.error(f"User with ID {user_id} not found")
+                return {"message": "User not found"}, 404
+
+            stripe_subscription_id = request.json.get('stripe_subscription_id')
+            if not stripe_subscription_id:
+                return {"message": "Stripe Subscription ID is required"}, 400
+
+            user.stripe_subscription_id = stripe_subscription_id
+            db.session.commit()
+
+            logger.info(f"Stored Stripe Subscription ID for user {user_id}")
+            return {"message": "Stripe subscription ID stored"}, 200
+        except Exception as e:
+            logger.error(f"Unexpected error storing Stripe subscription ID: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+class CancelStripeSubscription(Resource):
+    @jwt_required()
+    def put(self, user_id):
+        logger.info(f"Entered CancelStripeSubscription put method for user_id {user_id}")
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                logger.error(f"User with ID {user_id} not found")
+                return {"message": "User not found"}, 404
+
+            stripe_subscription_id = user.stripe_subscription_id
+            if not stripe_subscription_id:
+                return {"message": "No Stripe subscription ID found for user"}, 400
+
+            # Use Stripe API to cancel the subscription
+            try:
+                stripe.Subscription.delete(stripe_subscription_id)
+                logger.info(f"Canceled Stripe subscription {stripe_subscription_id} for user {user_id}")
+            except stripe.error.StripeError as e:
+                logger.error(f"Stripe error: {e}")
+                return {"message": f"Failed to cancel Stripe subscription: {e}"}, 500
+
+            # Remove subscription ID and set the user to non-premium
+            user.stripe_subscription_id = None
+            user.premium_status = False
+            db.session.commit()
+
+            logger.info(f"Premium status removed and subscription ID cleared for user {user_id}")
+            return {"message": "Subscription canceled and premium status removed"}, 200
+        except Exception as e:
+            logger.error(f"Unexpected error canceling subscription: {e}", exc_info=True)
+            return {"message": "Something went wrong"}, 500
+
+
+class GetStripeSubscription(Resource):
+    @jwt_required()
+    def get(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+
+        return {"stripe_subscription_id": user.stripe_subscription_id}, 200
 
 
 # Register API resources
@@ -892,6 +961,11 @@ api.add_resource(GivePremiumStatus, '/user/<int:user_id>/premium/grant')
 api.add_resource(RemovePremiumStatus, '/user/<int:user_id>/premium/remove')
 api.add_resource(CheckPremiumStatus, '/user/<int:user_id>/premium/status')
 api.add_resource(GrantPremiumByEmail, '/user/premium/grant_by_email')
+
+# stripe subscription resources
+api.add_resource(SetStripeSubscriptionID, '/user/<int:user_id>/stripe/subscription')
+api.add_resource(CancelStripeSubscription, '/user/<int:user_id>/stripe/cancel_subscription')
+api.add_resource(GetStripeSubscription, '/user/<int:user_id>/stripe_subscription')
 
 
 
