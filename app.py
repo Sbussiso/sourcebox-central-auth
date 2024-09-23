@@ -865,7 +865,6 @@ class GrantPremiumByEmail(Resource):
 
 
 class SetStripeSubscriptionID(Resource):
-    @jwt_required()
     def put(self, user_id):
         logger.info(f"Entered SetStripeSubscriptionID put method for user_id {user_id}")
         try:
@@ -889,7 +888,6 @@ class SetStripeSubscriptionID(Resource):
 
 
 class CancelStripeSubscription(Resource):
-    @jwt_required()
     def put(self, user_id):
         logger.info(f"Entered CancelStripeSubscription put method for user_id {user_id}")
         try:
@@ -923,7 +921,6 @@ class CancelStripeSubscription(Resource):
 
 
 class GetStripeSubscription(Resource):
-    @jwt_required()
     def get(self, user_id):
         user = User.query.get(user_id)
         if not user:
