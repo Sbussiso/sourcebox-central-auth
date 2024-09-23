@@ -312,7 +312,6 @@ class ListUsers(Resource):
             return {"message": "Something went wrong"}, 500
 
 class SearchUsers(Resource):
-    @jwt_required()
     def get(self):
         logger.info("Entered SearchUsers get method")
         try:
