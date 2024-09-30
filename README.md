@@ -74,7 +74,7 @@ flask run --port=5000
 
 ## API Endpoints
 
-> he SourceBox Central Authentication API provides several RESTful endpoints for interacting with the platform.
+> The SourceBox Central Authentication API provides several RESTful endpoints for interacting with the platform.
 
 <br/>
 
